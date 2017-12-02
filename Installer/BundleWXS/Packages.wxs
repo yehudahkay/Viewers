@@ -57,7 +57,7 @@
 	<Fragment>
         <PackageGroup Id="MainInstaller">
 			<MsiPackage 
-				SourceFile="$(var.LTInstallerPath)"
+				SourceFile="$(var.InstallerPath)"
 				ForcePerMachine="yes"
 				InstallCondition="VersionNT64"
 				DisplayInternalUI="yes" />

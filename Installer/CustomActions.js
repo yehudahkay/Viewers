@@ -3,7 +3,10 @@ var _fileSystem = new ActiveXObject("Scripting.FileSystemObject");
 
 // Custom Action called by WIX to configure MongoDB settings and start MongoDB service
 function ConfigureMongoDB() {
-	var installDir = Session.Property("CustomActionData");
+	var customProperties = Session.Property("CustomActionData");
+	var installDir = getProperty(customProperties, "INSTALLDIR");
+	var productName = getProperty(customProperties, "ProductName");
+	var applicationDB = getDatabaseName(productName);
 	
 	var mongoDBDir="C:\\Program Files\\MongoDB\\Server\\3.4\\";
 	if (!_fileSystem.FolderExists(mongoDBDir)) {
@@ -26,23 +29,26 @@ function ConfigureMongoDB() {
 	var configCommands = [
 		"\""+mongoDBDir+"\\bin\\mongod.exe\" --config \""+mongoDBDir+"\\mongod.cfg\" --install",
 		"net start MongoDB",
-		"\""+mongoDBDir+"\\bin\\mongo.exe\" --eval \"connect('127.0.0.1:27017/lesiontracker')\""
+		"\""+mongoDBDir+"\\bin\\mongo.exe\" --eval \"connect('127.0.0.1:27017/\""+applicationDB+"\"')\""
 	];
 	
 	RunShellCommands(configCommands);
 }
 
-// Custom Action called by WIX to install and start LesionTracker service
+// Custom Action called by WIX to install and start installer service
 function InstallLTService() {
-	var installDir = Session.Property("CustomActionData");
+	var customProperties = Session.Property("CustomActionData");
+	var installDir = getProperty(customProperties, "INSTALLDIR");
+	var productName = getProperty(customProperties, "ProductName");
+	var applicationName = getApplicationName(productName);
 	
 	// Set environment variables
-	SetEnvironmentVariables(installDir);
+	SetEnvironmentVariables(installDir, productName);
 	
 	var installCommands = [
-		"node \""+installDir+"NodeWindowsService\\service.js\" \"LesionTracker Server\" \""+installDir+"bundle\\main.js\" --install",
+		"node \""+installDir+"NodeWindowsService\\service.js\" \""+applicationName+" Server\" \""+installDir+"bundle\\main.js\" --install",
 		"netsh http add urlacl url=http://+:3000/ user=\Everyone",
-		"netsh advfirewall firewall add rule name=\"LesionTracker Default Port 3000\" dir=in action=allow protocol=TCP localport=3000"
+		"netsh advfirewall firewall add rule name=\""+applicationName+"\" Default Port 3000\" dir=in action=allow protocol=TCP localport=3000"
 	];
 	
 	RunShellCommands(installCommands);
@@ -62,13 +68,16 @@ function UninstallOrthancServer() {
 	RunShellCommands(orthancCommands);
 }
 
-// Custom Action called by WIX to uninstall LesionTracker service and stop MongoDB service
+// Custom Action called by WIX to uninstall installer service and stop MongoDB service
 function UninstallLTService() {
-	var installDir = Session.Property("CustomActionData");
+	var customProperties = Session.Property("CustomActionData");
+	var installDir = getProperty(customProperties, "INSTALLDIR");
+	var productName = getProperty(customProperties, "ProductName");
+	var serviceName = getServiceName(productName);
 	
 	var uninstallCommands = [
-		"net stop lesiontrackerserver.exe",
-		"sc delete lesiontrackerserver.exe",
+		"net stop "+serviceName,
+		"sc delete "+serviceName,
 		"net stop MongoDB",
 		"sc delete MongoDB"
 	];
@@ -95,11 +104,12 @@ function SetEnvironmentVariable(key, value) {
 }
 
 // Set environment variables which are used to run the application
-function SetEnvironmentVariables(installDir) {
+function SetEnvironmentVariables(installDir, productName) {
+	var applicationDB = getDatabaseName(productName);
 	var settings = GetFileContent(installDir+"\\orthancDICOMWeb.json");
 	var rootUrl = "http://localhost";
 	var port = 3000;
-	var mongoUrl = "mongodb://127.0.0.1:27017/lesiontracker";
+	var mongoUrl = "mongodb://127.0.0.1:27017/"+applicationDB;
 	
 	SetEnvironmentVariable('METEOR_SETTINGS', settings);
 	SetEnvironmentVariable('ROOT_URL', rootUrl);
@@ -119,6 +129,44 @@ function UnsetEnvironmentVariables() {
 	UnsetEnvironmentVariable('ROOT_URL');
 	UnsetEnvironmentVariable('PORT');
 	UnsetEnvironmentVariable('MONGO_URL');
+}
+
+// Get a property from custom properties list
+function getProperty(customProperties, propertyName) {
+	var propertiesList = customProperties.split(";");	
+	
+	if (propertyName === "INSTALLDIR") {
+		return propertiesList[0];
+	} else if (propertyName === "ProductName") {
+		return propertiesList[1];
+	}
+}
+
+// Get the name of the application
+function getApplicationName(productName) {	
+	if (productName.indexOf('OHIF') > -1) {
+		return "OHIF Viewer";
+	} else {
+		return "LesionTracker";
+	}
+}
+
+// Get service name for the application
+function getServiceName(productName) {	
+	if (productName.indexOf('OHIF') > -1) {
+		return "ohifviewerserver.exe";
+	} else {
+		return "lesiontrackerserver.exe";
+	}
+}
+
+// Get database name for the application
+function getDatabaseName(productName) {
+	if (productName.indexOf('OHIF') > -1) {
+		return "ohifviewer";
+	} else {
+		return "lesiontracker";
+	}
 }
 
 // Get content of the file

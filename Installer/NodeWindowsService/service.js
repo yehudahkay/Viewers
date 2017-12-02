@@ -6,6 +6,7 @@ var exec = require("child_process").exec;
 var serviceName = process.argv[2];
 var scriptPath = process.argv[3];
 var option = process.argv[4];
+var serviceExe = serviceName.replace(/\s/g,'').toLowerCase()+".exe";
 
 var svc = new Service({
 	name: serviceName,
@@ -32,7 +33,7 @@ svc.on("install", function () {
 			return;
 		}
 		
-		exec("sc query lesiontrackerserver.exe", function(err, stdout) {
+		exec("sc query "+serviceExe, function(err, stdout) {
 			stdout.toString().split("\r\n").filter(function (line) {
 				if (line.indexOf("STATE") < 0) {
 					return;
@@ -40,7 +41,7 @@ svc.on("install", function () {
 				
 				if (line.indexOf("RUNNING") < 0) {
 					console.log("Service could not be started. Retrying...");
-					exec('net start lesiontrackerserver.exe');
+					exec('net start '+serviceExe);
 					return;
 				}
 				
@@ -60,4 +61,3 @@ if (option == "--install") {
 } else if (option == "--stop") {
 	svc.stop();
 }
-
