@@ -35,7 +35,13 @@ OHIF.mixins.formItem = new OHIF.Mixin({
                     return component.parseData(component.$element.val());
                 }
 
-                component.$element.val(value).trigger('change');
+                // Deferring the `change` event because it was being triggered before
+                // formItem.onMixins execution when a defaultValue was specified. In
+                // this case $elem.data('component') code from the event handler was
+                // returning `undefined` and breaking the app
+                Meteor.defer(() => {
+                    component.$element.val(value).trigger('change');
+                });
             };
 
             // Disable or enable the component
@@ -88,16 +94,18 @@ OHIF.mixins.formItem = new OHIF.Mixin({
             // Toggle the tooltip over the component
             component.toggleTooltip = (isShow, message) => {
                 if (isShow && message) {
-                    // Stop here if the tooltip is already created
-                    if (component.$wrapper.next('.tooltip').length) {
-                        return;
+                    const tooltipId = component.$wrapper.attr('aria-describedby');
+                    const $tooltip = $(document.getElementById(tooltipId));
+                    if ($tooltip.length) {
+                        // Change the message if the tooltip is already created
+                        $tooltip.find('.tooltip-inner').text(message);
+                    } else {
+                        // Destroy the tooltip if already created, creating it again
+                        component.$wrapper.tooltip('destroy').tooltip({
+                            trigger: 'manual',
+                            title: message
+                        }).tooltip('show');
                     }
-
-                    // Destroy the tooltip if created and create again
-                    component.$wrapper.tooltip('destroy').tooltip({
-                        trigger: 'manual',
-                        title: message
-                    }).tooltip('show');
                 } else {
                     // Destroy the tooltip
                     component.$wrapper.tooltip('destroy');
@@ -211,6 +219,17 @@ OHIF.mixins.formItem = new OHIF.Mixin({
 
             component.depend = () => {
                 return component.changeObserver.depend();
+            };
+
+            // Click the first submit (or first button if submit not found) button on closest form
+            component.triggerFormMainButton = () => {
+                const $form = component.$element.closest('form');
+                let $formButton = $form.find('button[type=submit]:first');
+                if (!$formButton.length) {
+                    $formButton = $form.find('button:first');
+                }
+
+                $formButton.click();
             };
 
         },

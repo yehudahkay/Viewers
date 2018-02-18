@@ -30,15 +30,19 @@ Router.route('/', function() {
     Router.go('studylist', {}, { replaceState: true });
 }, { name: 'home' });
 
-Router.route('/studylist', function() {
-    // Retrieve the timepoints data to display in studylist
-    const promise = OHIF.studylist.timepointApi.retrieveTimepoints({}).then(() => {
-        this.render('app', { data: { template: 'studylist' } });
-    });
+Router.route('/studylist', {
+    name: 'studylist',
+    onBeforeAction: function() {
+        const next = this.next;
 
-    // Show loading state while preparing the studylist data
-    OHIF.ui.showDialog('dialogLoading', { promise });
-}, { name: 'studylist' });
+        // Retrieve the timepoints data to display in studylist
+        const promise = OHIF.studylist.timepointApi.retrieveTimepoints({});
+        promise.then(() => next());
+    },
+    action: function() {
+        this.render('app', { data: { template: 'studylist' } });
+    }
+});
 
 Router.route('/viewer/timepoints/:timepointId', function() {
     const timepointId = this.params.timepointId;
@@ -49,3 +53,10 @@ Router.route('/viewer/studies/:studyInstanceUids', function() {
     const studyInstanceUids = this.params.studyInstanceUids.split(';');
     OHIF.viewerbase.renderViewer(this, { studyInstanceUids });
 }, { name: 'viewerStudies' });
+
+// OHIF #98 Show specific series of study
+Router.route('/study/:studyInstanceUid/series/:seriesInstanceUids', function () {
+    const studyInstanceUid = this.params.studyInstanceUid;
+    const seriesInstanceUids = this.params.seriesInstanceUids.split(';');
+    OHIF.viewerbase.renderViewer(this, { studyInstanceUids: [studyInstanceUid], seriesInstanceUids });
+}, { name: 'viewerSeries' });

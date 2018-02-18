@@ -2,13 +2,12 @@ import { OHIF } from 'meteor/ohif:core';
 import { Template } from 'meteor/templating';
 import { Session } from 'meteor/session';
 import { _ } from 'meteor/underscore';
-import { toolManager } from '../../../lib/toolManager';
 
 Template.toolbarSectionButton.onCreated(() => {
     const instance = Template.instance();
 
     instance.isActive = activeToolId => {
-        // TODO: Find a way to prevent the 'flash' after a click, but before this helper runs
+        OHIF.commands.last.dep.depend();
         const instance = Template.instance();
         const subTools = instance.data.subTools;
         const currentId = instance.data.id;
@@ -16,9 +15,10 @@ Template.toolbarSectionButton.onCreated(() => {
         const isSubTool = subTools && _.findWhere(subTools, { id: activeToolId });
         const activeCommandButtons = Session.get('ToolManagerActiveCommandButtons') || [];
         const isActiveCommandButton = activeCommandButtons.indexOf(instance.data.id) !== -1;
+        const isActive = typeof instance.data.active === 'function' && instance.data.active();
 
         // Check if the current tool, a sub tool or a command button is active
-        return isCurrentTool || isSubTool || isActiveCommandButton;
+        return isActive || isCurrentTool || isSubTool || isActiveCommandButton;
     };
 
     instance.getActiveToolSubProperty = (propertyName, activeToolId) => {
@@ -34,6 +34,38 @@ Template.toolbarSectionButton.onCreated(() => {
             return defaultProperty;
         }
     };
+
+    instance.autorun(computation => {
+        // Get the last executed command
+        const lastCommand = OHIF.commands.last.get();
+
+        // Prevent running this computation on its first run
+        if (computation.firstRun) return;
+
+        // Stop here if it's not the last command or if it's already an active tool
+        const { id } = instance.data;
+        const activeToolId = OHIF.viewerbase.toolManager.getActiveTool();
+        if (lastCommand !== id || instance.isActive(activeToolId)) return;
+
+        // Add an active class to a button for 100ms to give the impression the button was pressed
+        const flashButton = $element => {
+            $element.addClass('active');
+            setTimeout(() => {
+                if ($element.hasClass('expandable') && $element.find('.toolbarSectionButton.active').length) return;
+                $element.removeClass('active');
+            }, 100);
+        };
+
+        // Flash the active button
+        const $button = instance.$('.toolbarSectionButton').first();
+        flashButton($button);
+
+        // Flash the parent button as well in case of this button is inside a drawer
+        const $parentButton = $button.closest('.toolbarSectionButton.expandable');
+        if ($parentButton.length) {
+            flashButton($parentButton);
+        }
+    });
 });
 
 Template.toolbarSectionButton.helpers({
@@ -47,57 +79,36 @@ Template.toolbarSectionButton.helpers({
     svgLink() {
         const instance = Template.instance();
         const activeToolId = Session.get('ToolManagerActiveTool');
-        return instance.getActiveToolSubProperty('svgLink', activeToolId);
+        const svgLink = instance.getActiveToolSubProperty('svgLink', activeToolId);
+        return _.isFunction(svgLink) ? svgLink() : svgLink;
     },
 
     iconClasses() {
         const instance = Template.instance();
         const activeToolId = Session.get('ToolManagerActiveTool');
-        return instance.getActiveToolSubProperty('iconClasses', activeToolId);
+        const iconClasses = instance.getActiveToolSubProperty('iconClasses', activeToolId);
+        return _.isFunction(iconClasses) ? iconClasses() : iconClasses;
     },
 
     disableButton() {
+        Session.get('activeViewport');
+        Session.get('LayoutManagerUpdated');
         const instance = Template.instance();
-        return instance.data.disableFunction && instance.data.disableFunction();
+        const isCommandDisabled = OHIF.commands.isDisabled(instance.data.id);
+        const isFunctionDisabled = instance.data.disableFunction && instance.data.disableFunction();
+        return isCommandDisabled || isFunctionDisabled;
     }
 });
 
 Template.toolbarSectionButton.events({
-    'click .imageViewerTool'(event, instance) {
+    'click .toolbarSectionButton:not(.expandable)'(event, instance) {
         // Prevent the event from bubbling to parent tools
         event.stopPropagation();
 
-        // Stop here if the tool is disabled
-        if ($(event.currentTarget).hasClass('disabled')) {
-            return;
-        }
+        // Stop here if the button is disabled
+        if ($(event.currentTarget).hasClass('disabled')) return;
 
-        const tool = event.currentTarget.id;
-        const elements = instance.$('.imageViewerViewport');
-
-        const activeTool = toolManager.getActiveTool();
-        if (tool !== activeTool) {
-            OHIF.log.info('Setting active tool to: ' + tool);
-            toolManager.setActiveTool(tool, elements);
-        }
-    },
-
-    'click .imageViewerCommand'(event, instance) {
-        // Prevent the event from bubbling to parent tools
-        event.stopPropagation();
-
-        // Stop here if the tool is disabled
-        if ($(event.currentTarget).hasClass('disabled')) {
-            return;
-        }
-
-        const command = event.currentTarget.id;
-        if (!OHIF.viewer.functionList || !OHIF.viewer.functionList.hasOwnProperty(command)) {
-            return;
-        }
-
-        const activeViewport = Session.get('activeViewport');
-        const element = $('.imageViewerViewport').get(activeViewport);
-        OHIF.viewer.functionList[command](element);
+        // Run the command attached to the button
+        OHIF.commands.run(instance.data.id);
     }
 });

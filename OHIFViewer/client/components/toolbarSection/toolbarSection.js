@@ -4,10 +4,26 @@ import { $ } from 'meteor/jquery';
 import { OHIF } from 'meteor/ohif:core';
 import 'meteor/ohif:viewerbase';
 
+function isThereSeries(studies) {
+    if (studies.length === 1) {
+        const study = studies[0];
+
+        if (study.seriesList && study.seriesList.length > 1) {
+            return true;
+        }
+
+        if (study.displaySets && study.displaySets.length > 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 Template.toolbarSection.onCreated(() => {
     const instance = Template.instance();
 
-    if (OHIF.uiSettings.leftSidebarOpen) {
+    if (OHIF.uiSettings.leftSidebarOpen && isThereSeries(instance.data.studies)) {
         instance.data.state.set('leftSidebar', 'studies');
     }
 });
@@ -89,6 +105,14 @@ Template.toolbarSection.helpers({
         });
 
         extraTools.push({
+            id: 'toggleDownloadDialog',
+            title: 'Download',
+            classes: 'imageViewerCommand',
+            iconClasses: 'fa fa-camera',
+            active: () => $('#downloadDialog').is(':visible')
+        });
+
+        extraTools.push({
             id: 'invert',
             title: 'Invert',
             classes: 'imageViewerCommand',
@@ -102,7 +126,7 @@ Template.toolbarSection.helpers({
             iconClasses: 'fa fa-trash'
         });
 
-        var buttonData = [];
+        const buttonData = [];
 
         buttonData.push({
             id: 'zoom',
@@ -159,23 +183,23 @@ Template.toolbarSection.helpers({
                 id: 'previousDisplaySet',
                 title: 'Previous',
                 classes: 'imageViewerCommand',
-                buttonTemplateName: 'displaySetNavigation',
-                isNext: false
+                iconClasses: 'fa fa-toggle-up fa-fw'
             });
 
             buttonData.push({
                 id: 'nextDisplaySet',
                 title: 'Next',
                 classes: 'imageViewerCommand',
-                buttonTemplateName: 'displaySetNavigation',
-                isNext: true
+                iconClasses: 'fa fa-toggle-down fa-fw'
             });
 
+            const { isPlaying } = OHIF.viewerbase.viewportUtils;
             buttonData.push({
                 id: 'toggleCinePlay',
-                title: 'Toggle CINE Play',
+                title: () => isPlaying() ? 'Stop' : 'Play',
                 classes: 'imageViewerCommand',
-                buttonTemplateName: 'playClipButton'
+                iconClasses: () => ('fa fa-fw ' + (isPlaying() ? 'fa-stop' : 'fa-play')),
+                active: isPlaying
             });
 
             buttonData.push({
@@ -183,7 +207,7 @@ Template.toolbarSection.helpers({
                 title: 'CINE',
                 classes: 'imageViewerCommand',
                 iconClasses: 'fa fa-youtube-play',
-                disableFunction: OHIF.viewerbase.viewportUtils.hasMultipleFrames
+                active: () => $('#cineDialog').is(':visible')
             });
         }
 

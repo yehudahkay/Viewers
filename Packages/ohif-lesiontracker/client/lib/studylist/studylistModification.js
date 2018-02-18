@@ -3,11 +3,12 @@ import { Router } from 'meteor/iron:router';
 import { OHIF } from 'meteor/ohif:core';
 
 Meteor.startup(function() {
+    if (!OHIF.studylist) return;
+
     OHIF.studylist.callbacks.dblClickOnStudy = dblClickOnStudy;
     OHIF.studylist.callbacks.middleClickOnStudy = dblClickOnStudy;
 
     OHIF.studylist.timepointApi = new OHIF.measurements.TimepointApi();
-    OHIF.studylist.timepointApi.retrieveTimepoints({});
 });
 
 /**

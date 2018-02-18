@@ -4,8 +4,14 @@ import { OHIF } from 'meteor/ohif:core';
 OHIF.measurements.syncMeasurementAndToolData = measurement => {
     OHIF.log.info('syncMeasurementAndToolData');
 
-    const toolState = cornerstoneTools.globalImageIdSpecificToolStateManager.toolState;
-    const imageId = measurement.imageId;
+    const toolState = cornerstoneTools.globalImageIdSpecificToolStateManager.saveToolState();
+
+    // Stop here if the metadata for the measurement's study is not loaded yet
+    const { studyInstanceUid } = measurement;
+    const metadata = OHIF.viewer.StudyMetadataList.findBy({ studyInstanceUid });
+    if (!metadata) return;
+
+    const imageId = OHIF.viewerbase.getImageIdForImagePath(measurement.imagePath);
     const toolType = measurement.toolType;
 
     // If no tool state exists for this imageId, create an empty object to store it
@@ -55,4 +61,6 @@ OHIF.measurements.syncMeasurementAndToolData = measurement => {
 
     // Add the MeasurementData into the toolData for this imageId
     toolState[imageId][toolType].data.push(measurement);
+
+    cornerstoneTools.globalImageIdSpecificToolStateManager.restoreToolState(toolState);
 };

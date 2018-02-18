@@ -15,6 +15,10 @@ export const schema = new SimpleSchema({
         allowedValues: ['baseline', 'followup'],
         defaultValue: 'baseline',
     },
+    isLocked: {
+        type: Boolean,
+        label: 'Timepoint Locked'
+    },
     studyInstanceUids: {
         type: [String],
         label: 'Study Instance Uids',
@@ -32,5 +36,11 @@ export const schema = new SimpleSchema({
         type: Number,
         label: 'Number of patient\'s visit',
         optional: true
+    },
+    studiesData: {
+        type: [Object],
+        label: 'Studies data to allow lazy loading',
+        optional: true,
+        blackbox: true
     }
 });

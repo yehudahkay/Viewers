@@ -149,7 +149,7 @@ const CornerstoneViewport = new SimpleSchema({
         decimal: true,
         optional: true
     }
-})
+});
 
 const InstanceLevelMeasurement = new SimpleSchema([
     StudyLevelMeasurement,
@@ -177,11 +177,9 @@ const FrameLevelMeasurement = new SimpleSchema([
             min: 0,
             label: 'Frame index in Instance'
         },
-        // TODO: In the future we should remove this in favour of searching OHIF.viewer.Studies and display sets when
-        // re-displaying measurements. Otherwise if a study moves servers the measurements will not be displayed correctly
-        imageId: {
+        imagePath: {
             type: String,
-            label: 'Cornerstone Image Id'
+            label: 'Identifier for the measurement\'s image' // studyInstanceUid_seriesInstanceUid_sopInstanceUid_frameIndex
         }
     }
 ]);
@@ -215,6 +213,29 @@ const CornerstoneToolMeasurement = new SimpleSchema([
         }
     }
 ]);
+
+const CornerstoneHandleBoundingBoxSchema = new SimpleSchema({
+    width: {
+        type: Number,
+        label: 'Width',
+        decimal: true
+    },
+    height: {
+        type: Number,
+        label: 'Height',
+        decimal: true
+    },
+    left: {
+        type: Number,
+        label: 'Left',
+        decimal: true
+    },
+    top: {
+        type: Number,
+        label: 'Top',
+        decimal: true
+    }
+});
 
 const CornerstoneHandleSchema = new SimpleSchema({
     x: {
@@ -267,6 +288,11 @@ const CornerstoneHandleSchema = new SimpleSchema({
         type: Boolean,
         label: 'Has Bounding Box',
         defaultValue: false,
+        optional: true
+    },
+    boundingBox: {
+        type: CornerstoneHandleBoundingBoxSchema,
+        label: 'Bounding Box',
         optional: true
     },
     index: { // TODO: Remove 'index' from bidirectionalTool since it's useless

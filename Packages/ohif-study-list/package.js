@@ -5,7 +5,7 @@ Package.describe({
 });
 
 Npm.depends({
-    hammerjs: '2.0.6'
+    hammerjs: '2.0.8'
 });
 
 Package.onUse(function(api) {
@@ -25,15 +25,17 @@ Package.onUse(function(api) {
     // Note: MomentJS appears to be required for Bootstrap3 Datepicker, but not a dependency for some reason
     api.use('momentjs:moment');
 
-    api.use('gilbertwat:bootstrap3-daterangepicker');
+    api.use('dangrossman:bootstrap-daterangepicker@2.1.13');
 
     // Our custom packages
     api.use('ohif:design');
     api.use('ohif:core');
     api.use('ohif:log');
+    api.use('ohif:servers');
     api.use('ohif:dicom-services');
     api.use('ohif:viewerbase');
     api.use('ohif:wadoproxy');
+    api.use('ohif:studies');
 
     // Client and server imports
     api.addFiles('both/index.js', [ 'client', 'server' ]);
@@ -43,13 +45,4 @@ Package.onUse(function(api) {
 
     // Client imports
     api.addFiles('client/index.js', 'client');
-
-    // Export Servers and CurrentServer Collections
-    api.export('Servers', ['client', 'server']);
-    api.export('CurrentServer', ['client', 'server']);
-
-    // Export shared lib functions
-    api.export('getCurrentServer', ['client', 'server']);
-
-    api.export('Services', 'server');
 });

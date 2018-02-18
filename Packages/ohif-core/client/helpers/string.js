@@ -11,10 +11,10 @@ Template.registerHelper('concat', (...args) => {
     const values = _.initial(args, 1);
     let result = '';
     _.each(values, value => {
-        result += value || '';
+        result += typeof value !== 'undefined' ? value : '';
     });
     return result;
 });
 
 // Encode any string into a safe format for HTML id attribute
-Template.registerHelper('encodeId', string => OHIF.string.encodeId(string));
+Template.registerHelper('encodeId', OHIF.string.encodeId);

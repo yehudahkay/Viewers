@@ -1,6 +1,5 @@
 import { Blaze } from 'meteor/blaze';
 import { Template } from 'meteor/templating';
-import { OHIF } from 'meteor/ohif:core';
 import { _ } from 'meteor/underscore';
 import { $ } from 'meteor/jquery';
 
@@ -12,7 +11,7 @@ Template.unsavedChangesDialog.onRendered(function() {
     const instance = Template.instance();
     const $modal = instance.$('.modal.unsavedChangesDialog');
 
-    // Routine which effectivelly displays the BS modal...
+    // Routine which effectively displays the BS modal...
     instance.displayModal = () => {
 
         // Make modal options extensible...
@@ -22,7 +21,7 @@ Template.unsavedChangesDialog.onRendered(function() {
         }, instance.data.modalOptions);
 
         // Set handler for "hidden" event... Simply remove the view!
-        $modal.on('hidden.bs.modal', () => {
+        $modal.one('hidden.bs.modal', () => {
             Blaze.remove(instance.view);
         });
 

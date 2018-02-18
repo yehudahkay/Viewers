@@ -1,14 +1,13 @@
 import { Meteor } from 'meteor/meteor';
 import { Template } from 'meteor/templating';
 import { Session } from 'meteor/session';
-import { Random } from 'meteor/random';
 import { OHIF } from 'meteor/ohif:core';
 // Local Modules
 import { unloadHandlers } from '../../../lib/unloadHandlers';
-import { hotkeyUtils } from '../../../lib/hotkeyUtils';
 import { ResizeViewportManager } from '../../../lib/classes/ResizeViewportManager';
 import { LayoutManager } from '../../../lib/classes/LayoutManager';
 import { StudyPrefetcher } from '../../../lib/classes/StudyPrefetcher';
+import { StudyLoadingListener } from '../../../lib/classes/StudyLoadingListener';
 
 Meteor.startup(() => {
     window.ResizeViewportManager = window.ResizeViewportManager || new ResizeViewportManager();
@@ -36,20 +35,21 @@ Template.viewerMain.onRendered(() => {
     const { studies } = instance.data;
     const parentElement = instance.$('#layoutManagerTarget').get(0);
     const studyPrefetcher = StudyPrefetcher.getInstance();
+    instance.studyPrefetcher = studyPrefetcher;
 
-    OHIF.viewerbase.studyLoadingListener.clear();
-    OHIF.viewerbase.studyLoadingListener.addStudies(studies);
+    instance.studyLoadingListener = StudyLoadingListener.getInstance();
+    instance.studyLoadingListener.clear();
+    instance.studyLoadingListener.addStudies(studies);
 
     OHIF.viewerbase.layoutManager = new LayoutManager(parentElement, studies);
     studyPrefetcher.setStudies(studies);
 
-    // Enable hotkeys
-    hotkeyUtils.enableHotkeys();
-
-    Session.set('OHIFViewerMainRendered', Random.id());
+    Session.set('OHIFViewerMainRendered', Math.random());
 });
 
 Template.viewerMain.onDestroyed(() => {
+    const instance = Template.instance();
+
     OHIF.log.info('viewerMain onDestroyed');
 
     // Remove the Window resize listener
@@ -65,4 +65,21 @@ Template.viewerMain.onDestroyed(() => {
     ProtocolEngine = null;
 
     Session.set('OHIFViewerMainRendered', false);
+
+    // Stop prefetching when we close the viewer
+    instance.studyPrefetcher.destroy();
+
+    // Destroy stack loading listeners when we close the viewer
+    instance.studyLoadingListener.clear();
+
+    // Clear references to all stacks in the StackManager
+    OHIF.viewerbase.stackManager.clearStacks();
+
+    // @TypeSafeStudies
+    // Clears OHIF.viewer.Studies collection
+    OHIF.viewer.Studies.removeAll();
+
+    // @TypeSafeStudies
+    // Clears OHIF.viewer.StudyMetadataList collection
+    OHIF.viewer.StudyMetadataList.removeAll();
 });

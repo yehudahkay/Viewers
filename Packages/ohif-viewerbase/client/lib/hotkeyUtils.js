@@ -1,5 +1,7 @@
 import { Meteor } from 'meteor/meteor';
+import { Session } from 'meteor/session';
 import { $ } from 'meteor/jquery';
+import { _ } from 'meteor/underscore';
 import { OHIF } from 'meteor/ohif:core';
 import { toolManager } from './toolManager';
 import { switchToImageRelative } from './switchToImageRelative';
@@ -20,177 +22,217 @@ Meteor.startup(function() {
     };
 
     OHIF.viewer.defaultHotkeys = {
+        // Tool hotkeys
         defaultTool: 'ESC',
+        zoom: 'Z',
+        wwwc: 'W',
+        pan: 'P',
         angle: 'A',
         stackScroll: 'S',
-        pan: 'P',
         magnify: 'M',
-        scrollDown: 'DOWN',
-        scrollUp: 'UP',
-        nextDisplaySet: 'PAGEDOWN',
-        previousDisplaySet: 'PAGEUP',
-        nextPanel: 'RIGHT',
-        previousPanel: 'LEFT',
-        invert: 'I',
-        flipV: 'V',
+        length: '',
+        annotate: '',
+        dragProbe: '',
+        ellipticalRoi: '',
+        rectangleRoi: '',
+
+        // Viewport hotkeys
         flipH: 'H',
-        wwwc: 'W',
-        zoom: 'Z',
-        cinePlay: 'SPACE',
+        flipV: 'V',
         rotateR: 'R',
         rotateL: 'L',
+        invert: 'I',
+        zoomIn: '',
+        zoomOut: '',
+        zoomToFit: '',
+        resetViewport: '',
+        clearTools: '',
+
+        // Viewport navigation hotkeys
+        scrollDown: 'DOWN',
+        scrollUp: 'UP',
+        scrollLastImage: 'END',
+        scrollFirstImage: 'HOME',
+        previousDisplaySet: 'PAGEUP',
+        nextDisplaySet: 'PAGEDOWN',
+        nextPanel: 'RIGHT',
+        previousPanel: 'LEFT',
+
+        // Miscellaneous hotkeys
         toggleOverlayTags: 'SHIFT',
-        WLPresetSoftTissue: ['NUMPAD1', '1'],
-        WLPresetLung: ['NUMPAD2', '2'],
-        WLPresetLiver: ['NUMPAD3', '3'],
-        WLPresetBone: ['NUMPAD4', '4'],
-        WLPresetBrain: ['NUMPAD5', '5']
+        toggleCinePlay: 'SPACE',
+        toggleCineDialog: '',
+        toggleDownloadDialog: '',
+
+        // Preset hotkeys
+        WLPreset0: '1',
+        WLPreset1: '2',
+        WLPreset2: '3',
+        WLPreset3: '4',
+        WLPreset4: '5',
+        WLPreset5: '6',
+        WLPreset6: '7',
+        WLPreset7: '8',
+        WLPreset8: '9',
+        WLPreset9: '0'
     };
 
     // For now
     OHIF.viewer.hotkeys = OHIF.viewer.defaultHotkeys;
 
-    OHIF.viewer.hotkeyFunctions = {
-        wwwc: () => toolManager.setActiveTool('wwwc'),
-        zoom: () => toolManager.setActiveTool('zoom'),
-        angle: () => toolManager.setActiveTool('angle'),
-        dragProbe: () => toolManager.setActiveTool('dragProbe'),
-        ellipticalRoi: () => toolManager.setActiveTool('ellipticalRoi'),
-        magnify: () => toolManager.setActiveTool('magnify'),
-        annotate: () => toolManager.setActiveTool('annotate'),
-        stackScroll: () => toolManager.setActiveTool('stackScroll'),
-        pan: () => toolManager.setActiveTool('pan'),
-        length: () => toolManager.setActiveTool('length'),
-        spine: () => toolManager.setActiveTool('spine'),
-        wwwcRegion: () => toolManager.setActiveTool('wwwcRegion'),
+    // Create commands context for viewer
+    const contextName = 'viewer';
+    OHIF.commands.createContext(contextName);
 
-        zoomIn() {
-            const button = document.getElementById('zoomIn');
-            flashButton(button);
-            viewportUtils.zoomIn();
-        },
+    // Create a function that returns true if the active viewport is empty
+    const isActiveViewportEmpty = () => {
+        const activeViewport = Session.get('activeViewport') || 0;
+        return $('.imageViewerViewport').eq(activeViewport).hasClass('empty');
+    };
 
-        zoomOut() {
-            const button = document.getElementById('zoomOut');
-            flashButton(button);
-            viewportUtils.zoomOut();
-        },
+    // Functions to register the tool switching commands
+    const registerToolCommands = map => _.each(map, (commandName, toolId) => {
+        OHIF.commands.register(contextName, toolId, {
+            name: commandName,
+            action: toolManager.setActiveTool,
+            params: toolId
+        });
+    });
 
-        zoomToFit() {
-            const button = document.getElementById('zoomToFit');
-            flashButton(button);
-            viewportUtils.zoomToFit();
-        },
+    // Register the default tool command
+    OHIF.commands.register(contextName, 'defaultTool', {
+        name: 'Default Tool',
+        action: () => toolManager.setActiveTool(toolManager.getDefaultTool())
+    });
 
-        scrollDown() {
-            const $container = $('.viewportContainer.active');
-            const button = $container.find('#nextImage').get(0);
+    // Register the tool switching commands
+    registerToolCommands({
+        wwwc: 'W/L',
+        zoom: 'Zoom',
+        angle: 'Angle Measurement',
+        dragProbe: 'Pixel Probe',
+        ellipticalRoi: 'Elliptical ROI',
+        rectangleRoi: 'Rectangle ROI',
+        magnify: 'Magnify',
+        annotate: 'Annotate',
+        stackScroll: 'Scroll Stack',
+        pan: 'Pan',
+        length: 'Length Measurement',
+        wwwcRegion: 'W/L by Region'
+    });
 
-            if (!$container.find('.imageViewerViewport').hasClass('empty')) {
-                flashButton(button);
-                switchToImageRelative(1);
-            }
-        },
+    // Functions to register the viewport commands
+    const registerViewportCommands = map => _.each(map, (commandName, commandId) => {
+        OHIF.commands.register(contextName, commandId, {
+            name: commandName,
+            action: viewportUtils[commandId],
+            disabled: isActiveViewportEmpty
+        });
+    });
 
-        scrollFirstImage() {
-            const $container = $('.viewportContainer.active');
-            if (!$container.find('.imageViewerViewport').hasClass('empty')) {
-                switchToImageByIndex(0);
-            }
-        },
+    // Register the viewport commands
+    registerViewportCommands({
+        zoomIn: 'Zoom In',
+        zoomOut: 'Zoom Out',
+        zoomToFit: 'Zoom to Fit',
+        invert: 'Invert',
+        flipH: 'Flip Horizontally',
+        flipV: 'Flip Vertically',
+        rotateR: 'Rotate Right',
+        rotateL: 'Rotate Left',
+        resetViewport: 'Reset',
+        clearTools: 'Clear Tools'
+    });
 
-        scrollLastImage() {
-            const $container = $('.viewportContainer.active');
-            if (!$container.find('.imageViewerViewport').hasClass('empty')) {
-                switchToImageByIndex(-1);
-            }
-        },
+    // Register the preset switching commands
+    const applyPreset = presetName => WLPresets.applyWLPresetToActiveElement(presetName);
+    for (let i = 0; i < 10; i++) {
+        OHIF.commands.register(contextName, `WLPreset${i}`, {
+            name: `W/L Preset ${i + 1}`,
+            action: applyPreset,
+            params: i
+        });
+    }
 
-        scrollUp() {
-            const $container = $('.viewportContainer.active');
-            if (!$container.find('.imageViewerViewport').hasClass('empty')) {
-                const button = $container.find('#prevImage').get(0);
-                flashButton(button);
-                switchToImageRelative(-1);
-            }
-        },
-
-        previousDisplaySet: () => OHIF.viewerbase.layoutManager.moveDisplaySets(false),
-        nextDisplaySet: () => OHIF.viewerbase.layoutManager.moveDisplaySets(true),
-        nextPanel: () => panelNavigation.loadNextActivePanel(),
-        previousPanel: () => panelNavigation.loadPreviousActivePanel(),
-
-        invert() {
-            const button = document.getElementById('invert');
-            flashButton(button);
-            viewportUtils.invert();
-        },
-
-        flipV() {
-            const button = document.getElementById('flipV');
-            flashButton(button);
-            viewportUtils.flipV();
-        },
-
-        flipH() {
-            const button = document.getElementById('flipH');
-            flashButton(button);
-            viewportUtils.flipH();
-        },
-
-        rotateR() {
-            const button = document.getElementById('rotateR');
-            flashButton(button);
-            viewportUtils.rotateR();
-        },
-
-        rotateL() {
-            const button = document.getElementById('rotateL');
-            flashButton(button);
-            viewportUtils.rotateL();
-        },
-
-        cinePlay: () => viewportUtils.toggleCinePlay(),
-
-        defaultTool() {
-            const tool = toolManager.getDefaultTool();
-            toolManager.setActiveTool(tool);
-        },
-
-        toggleOverlayTags() {
-            const $dicomTags = $('.imageViewerViewportOverlay .dicomTag');
-            if ($dicomTags.eq(0).css('display') === 'none') {
-                $dicomTags.show();
-            } else {
-                $dicomTags.hide();
-            }
-        },
-
-        resetStack() {
-            const button = document.getElementById('resetStack');
-            flashButton(button);
-            resetStack();
-        },
-
-        clearImageAnnotations() {
-            const button = document.getElementById('clearImageAnnotations');
-            flashButton(button);
-            clearImageAnnotations();
-        },
-
-        cineDialog() {
-            /**
-             * TODO: This won't work in OHIF's, since this element
-             * doesn't exist
-             */
-            const button = document.getElementById('cine');
-            flashButton(button);
-            viewportUtils.toggleCineDialog();
-            button.classList.toggle('active');
+    // Check if display sets can be moved
+    const canMoveDisplaySets = isNext => {
+        if (!OHIF.viewerbase.layoutManager) {
+            return false;
+        } else {
+            return OHIF.viewerbase.layoutManager.canMoveDisplaySets(isNext);
         }
     };
 
+    // Register viewport navigation commands
+    OHIF.commands.set(contextName, {
+        scrollDown: {
+            name: 'Scroll Down',
+            action: () => !isActiveViewportEmpty() && switchToImageRelative(1)
+        },
+        scrollUp: {
+            name: 'Scroll Up',
+            action: () => !isActiveViewportEmpty() && switchToImageRelative(-1)
+        },
+        scrollFirstImage: {
+            name: 'Scroll to First Image',
+            action: () => !isActiveViewportEmpty() && switchToImageByIndex(0)
+        },
+        scrollLastImage: {
+            name: 'Scroll to Last Image',
+            action: () => !isActiveViewportEmpty() && switchToImageByIndex(-1)
+        },
+        previousDisplaySet: {
+            name: 'Previous Series',
+            action: () => OHIF.viewerbase.layoutManager.moveDisplaySets(false),
+            disabled: () => !canMoveDisplaySets(false)
+        },
+        nextDisplaySet: {
+            name: 'Next Series',
+            action: () => OHIF.viewerbase.layoutManager.moveDisplaySets(true),
+            disabled: () => !canMoveDisplaySets(true)
+        },
+        nextPanel: {
+            name: 'Next Panel',
+            action: () => panelNavigation.loadNextActivePanel()
+        },
+        previousPanel: {
+            name: 'Previous Panel',
+            action: () => panelNavigation.loadPreviousActivePanel()
+        }
+    }, true);
+
+    // Register miscellaneous commands
+    OHIF.commands.set(contextName, {
+        toggleOverlayTags: {
+            name: 'Toggle Image Annotations',
+            action() {
+                const $dicomTags = $('.imageViewerViewportOverlay .dicomTag');
+                $dicomTags.toggle($dicomTags.eq(0).css('display') === 'none');
+            }
+        },
+        toggleCinePlay: {
+            name: 'Play/Pause Cine',
+            action: viewportUtils.toggleCinePlay,
+            disabled: OHIF.viewerbase.viewportUtils.hasMultipleFrames
+        },
+        toggleCineDialog: {
+            name: 'Show/Hide Cine Controls',
+            action: viewportUtils.toggleCineDialog,
+            disabled: OHIF.viewerbase.viewportUtils.hasMultipleFrames
+        },
+        toggleDownloadDialog: {
+            name: 'Show/Hide Download Dialog',
+            action: viewportUtils.toggleDownloadDialog,
+            disabled: () => !viewportUtils.isDownloadEnabled()
+        }
+    }, true);
+
+    OHIF.viewer.hotkeyFunctions = {};
+
     OHIF.viewer.loadedSeriesData = {};
+
+    // Enable hotkeys
+    hotkeyUtils.enableHotkeys();
 });
 
 // Define a jQuery reverse function
@@ -213,117 +255,14 @@ function setOHIFHotkeys(hotkeys) {
 }
 
 /**
- * Global function to merge different hotkeys configurations
- * but avoiding conflicts between different keys with same action
- * When this occurs, it will delete the action from OHIF's configuration
- * So if you want to keep all OHIF's actions, use an unused-ohif-key
- * Used for compatibility with others systems only
- *
- * @param hotkeysActions {object} Object with actions map
- * @return {object}
- */
-function mergeHotkeys(hotkeysActions) {
-    // Merge hotkeys, overriding OHIF's settings
-    const mergedHotkeys = Object.assign({}, OHIF.viewer.defaultHotkeys, hotkeysActions);
-
-    const defaultHotkeys = OHIF.viewer.defaultHotkeys;
-    const hotkeysKeys = Object.keys(hotkeysActions);
-
-    // Check for conflicts with same keys but different actions
-    Object.keys(defaultHotkeys).forEach(ohifAction => {
-        hotkeysKeys.forEach(definedAction => {
-            // Different action but same key:
-            // Remove action from merge if is not in "hotkeysActions"
-            // If it is, it's already merged so nothing to do
-            if (ohifAction !== definedAction && hotkeysActions[definedAction] === defaultHotkeys[ohifAction] && !hotkeysActions[ohifAction]) {
-                delete mergedHotkeys[ohifAction];
-            }
-        });
-    });
-
-    return mergedHotkeys;
-}
-
-/**
- * Add an active class to a button for 100ms only
- * to give the impressiont the button was pressed.
- * This is for tools that don't keep the button "pressed"
- * all the time the tool is active.
- *
- * @param  button DOM Element for the button to be "flashed"
- */
-function flashButton(button) {
-    if (!button) {
-        return;
-    }
-
-    button.classList.add('active');
-    setTimeout(() => {
-        button.classList.remove('active');
-    }, 100);
-}
-
-/**
- * Binds a task to a hotkey keydown event
- * @param  {String} hotkey keyboard key
- * @param  {String} task   task function name
- */
-function bindHotkey(hotkey, task) {
-    const hotkeyFunctions = OHIF.viewer.hotkeyFunctions;
-
-    // Only bind defined, non-empty HotKeys
-    if (!hotkey || hotkey === '') {
-        return;
-    }
-
-    let fn;
-    if (task.indexOf('WLPreset') > -1) {
-        const presetName = task.replace('WLPreset', '');
-        fn = function() {
-            WLPresets.applyWLPresetToActiveElement(presetName);
-        };
-    } else {
-        fn = hotkeyFunctions[task];
-
-        // If the function doesn't exist in the
-        // hotkey function list, try the viewer-specific function list
-        if (!fn && OHIF.viewer && OHIF.viewer.functionList) {
-            fn = OHIF.viewer.functionList[task];
-        }
-    }
-
-    if (!fn) {
-        return;
-    }
-
-    const hotKeyForBinding = hotkey.toLowerCase();
-
-    $(document).bind('keydown', hotKeyForBinding, fn);
-}
-
-/**
  * Binds all hotkeys keydown events to the tasks defined in
  * OHIF.viewer.hotkeys or a given param
  * @param  {Object} hotkeys hotkey and task mapping (not required). If not given, uses OHIF.viewer.hotkeys
  */
 function enableHotkeys(hotkeys) {
-    const viewerHotkeys = hotkeys || OHIF.viewer.hotkeys;
-
-    $(document).unbind('keydown');
-
-    Object.keys(viewerHotkeys).forEach(function(task) {
-        const taskHotkeys = viewerHotkeys[task];
-        if (!taskHotkeys || !taskHotkeys.length) {
-            return;
-        }
-
-        if (taskHotkeys instanceof Array) {
-            taskHotkeys.forEach(hotkey => bindHotkey(hotkey, task));
-        } else {
-            // taskHotkeys represents a single key
-            bindHotkey(taskHotkeys, task);
-        }
-    });
+    const definitions = hotkeys || OHIF.viewer.hotkeys;
+    OHIF.hotkeys.set('viewer', definitions, true);
+    OHIF.context.set('viewer');
 }
 
 /**
@@ -333,7 +272,6 @@ function enableHotkeys(hotkeys) {
 const hotkeyUtils = {
     setOHIFRefLines, /* @TODO: find a better place for this...  */
     setOHIFHotkeys,
-    mergeHotkeys,
     enableHotkeys
 };
 

@@ -31,6 +31,10 @@ Viewerbase.switchToImageByIndex = switchToImageByIndex;
 import { getFrameOfReferenceUID } from './lib/getFrameOfReferenceUID';
 Viewerbase.getFrameOfReferenceUID = getFrameOfReferenceUID;
 
+// getImageIdForImagePath
+import { getImageIdForImagePath } from './lib/getImageIdForImagePath';
+Viewerbase.getImageIdForImagePath = getImageIdForImagePath;
+
 // updateCrosshairsSynchronizer
 import { updateCrosshairsSynchronizer } from './lib/updateCrosshairsSynchronizer';
 Viewerbase.updateCrosshairsSynchronizer = updateCrosshairsSynchronizer;
@@ -82,6 +86,10 @@ Viewerbase.setMammogramViewportAlignment = setMammogramViewportAlignment;
 // displayReferenceLines
 import { displayReferenceLines } from './lib/displayReferenceLines';
 Viewerbase.displayReferenceLines = displayReferenceLines;
+
+// getStudyMetadata
+import { getStudyMetadata } from './lib/getStudyMetadata';
+Viewerbase.getStudyMetadata = getStudyMetadata;
 
 /**
  * Exported Namespaces (sub-namespaces)
@@ -160,10 +168,6 @@ Viewerbase.createStacks = createStacks;
 import { StackManager } from './lib/StackManager';
 Viewerbase.stackManager = StackManager;
 
-// studyLoadingListener
-import { studyLoadingListener } from './lib/studyLoadingListener';
-Viewerbase.studyLoadingListener = studyLoadingListener;
-
 // toolManager
 import { toolManager } from './lib/toolManager';
 Viewerbase.toolManager = toolManager;
@@ -206,6 +210,18 @@ Viewerbase.StudyPrefetcher = StudyPrefetcher;
 // ResizeViewportManager
 import { ResizeViewportManager } from './lib/classes/ResizeViewportManager';
 Viewerbase.ResizeViewportManager = ResizeViewportManager;
+
+// StudyLoadingListener
+import { StudyLoadingListener } from './lib/classes/StudyLoadingListener';
+Viewerbase.StudyLoadingListener = StudyLoadingListener;
+
+// StackLoadingListener
+import { StackLoadingListener } from './lib/classes/StudyLoadingListener';
+Viewerbase.StackLoadingListener = StackLoadingListener;
+
+// DICOMFileLoadingListener
+import { DICOMFileLoadingListener } from './lib/classes/StudyLoadingListener';
+Viewerbase.DICOMFileLoadingListener = DICOMFileLoadingListener;
 
 // StudyMetadata, SeriesMetadata, InstanceMetadata
 import { StudyMetadata } from './lib/classes/metadata/StudyMetadata';

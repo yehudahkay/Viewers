@@ -36,7 +36,7 @@ const initHangingProtocol = () => {
         const layoutManager = OHIF.viewerbase.layoutManager;
 
         // Instantiate StudyMetadataSource: necessary for Hanging Protocol to get study metadata
-        const studyMetadataSource = new OHIF.studylist.classes.OHIFStudyMetadataSource();
+        const studyMetadataSource = new OHIF.studies.classes.OHIFStudyMetadataSource();
 
         // Creates Protocol Engine object with required arguments
         const ProtocolEngine = new HP.ProtocolEngine(layoutManager, studyMetadataList, [], studyMetadataSource);
@@ -50,9 +50,10 @@ const initHangingProtocol = () => {
 Template.viewer.onCreated(() => {
     const instance = Template.instance();
 
-    instance.data.state = new ReactiveDict();
-    instance.data.state.set('leftSidebar', Session.get('leftSidebar'));
-    instance.data.state.set('rightSidebar', Session.get('rightSidebar'));
+    instance.state = new ReactiveDict();
+
+    instance.state.set('leftSidebar', Session.get('leftSidebar'));
+    instance.state.set('rightSidebar', Session.get('rightSidebar'));
 
     if (OHIF.viewer.data && OHIF.viewer.data.loadedSeriesData) {
         OHIF.log.info('Reloading previous loadedSeriesData');
@@ -78,12 +79,23 @@ Template.viewer.onCreated(() => {
     // Update the OHIF.viewer.Studies collection with the loaded studies
     OHIF.viewer.Studies.removeAll();
 
+    // @TypeSafeStudies
+    // Clears OHIF.viewer.StudyMetadataList collection
+    OHIF.viewer.StudyMetadataList.removeAll();
+
     OHIF.viewer.data.studyInstanceUids = [];
     instance.data.studies.forEach(study => {
+        const studyMetadata = new OHIF.metadata.StudyMetadata(study, study.studyInstanceUid);
+        let displaySets = study.displaySets;
+
+        if(!study.displaySets) {
+            displaySets = OHIF.viewerbase.sortingManager.getDisplaySets(studyMetadata);
+            study.displaySets = displaySets;
+        }
+
         study.selected = true;
-        const studyMetadata = new OHIF.metadata.StudyMetadata(study);
-        study.displaySets = OHIF.viewerbase.sortingManager.getDisplaySets(studyMetadata);
         OHIF.viewer.Studies.insert(study);
+        OHIF.viewer.StudyMetadataList.insert(studyMetadata);
         OHIF.viewer.data.studyInstanceUids.push(study.studyInstanceUid);
     });
 });
@@ -107,7 +119,13 @@ Template.viewer.onRendered(function() {
 Template.viewer.events({
     'click .js-toggle-studies'() {
         const instance = Template.instance();
-        const current = instance.data.state.get('leftSidebar');
-        instance.data.state.set('leftSidebar', !current);
+        const current = instance.state.get('leftSidebar');
+        instance.state.set('leftSidebar', !current);
+    }
+});
+
+Template.viewer.helpers({
+    state() {
+        return Template.instance().state;
     }
 });

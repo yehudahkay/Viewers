@@ -15,6 +15,7 @@ Meteor.startup(() => {
     Session.set('TimepointsReady', false);
     Session.set('MeasurementsReady', false);
 
+    OHIF.viewer.displaySeriesQuickSwitch = true;
     OHIF.viewer.stackImagePositionOffsetSynchronizer = new OHIF.viewerbase.StackImagePositionOffsetSynchronizer();
 
     // Create the synchronizer used to update reference lines
@@ -24,7 +25,7 @@ Meteor.startup(() => {
 
     // Metadata configuration
     const metadataProvider = OHIF.viewer.metadataProvider;
-    cornerstoneTools.metaData.addProvider(metadataProvider.getProvider());
+    cornerstone.metaData.addProvider(metadataProvider.getProvider());
 
     // Target tools configuration
     OHIF.lesiontracker.configureTargetToolsHandles();
@@ -53,11 +54,9 @@ Template.viewer.onCreated(() => {
     Object.assign(OHIF.viewer, apis);
     Object.assign(instance.data, apis);
 
-    ValidationErrors.remove({});
-
-    instance.data.state = new ReactiveDict();
-    instance.data.state.set('leftSidebar', Session.get('leftSidebar'));
-    instance.data.state.set('rightSidebar', Session.get('rightSidebar'));
+    instance.state = new ReactiveDict();
+    instance.state.set('leftSidebar', Session.get('leftSidebar'));
+    instance.state.set('rightSidebar', Session.get('rightSidebar'));
 
     const viewportUtils = OHIF.viewerbase.viewportUtils;
 
@@ -110,12 +109,16 @@ Template.viewer.onCreated(() => {
 
     instance.data.studies.forEach(study => {
         const studyMetadata = new OHIF.metadata.StudyMetadata(study, study.studyInstanceUid);
-        const displaySets = OHIF.viewerbase.sortingManager.getDisplaySets(studyMetadata);
+        let displaySets = study.displaySets;
+
+        if (!study.displaySets) {
+            displaySets = OHIF.viewerbase.sortingManager.getDisplaySets(studyMetadata);
+            study.displaySets = displaySets;
+        }
 
         studyMetadata.setDisplaySets(displaySets);
 
         study.selected = true;
-        study.displaySets = displaySets;
         OHIF.viewer.Studies.insert(study);
         OHIF.viewer.StudyMetadataList.insert(studyMetadata);
     });
@@ -223,6 +226,10 @@ Template.viewer.onCreated(() => {
 
         firstMeasurementActivated = true;
     });
+
+    instance.measurementModifiedHandler = _.throttle((event, instance, eventData) => {
+        OHIF.measurements.MeasurementHandlers.onModified(event, instance, eventData);
+    }, 300);
 });
 
 /**
@@ -282,14 +289,14 @@ const setActiveToolAndSidebar = () => {
         }
 
         // Toggle Measurement Table
-        if (instance.data.state) {
-            instance.data.state.set('rightSidebar', 'measurements');
+        if (instance.state) {
+            instance.state.set('rightSidebar', 'measurements');
         }
     }
     // Hide as default for single study
     else {
-        if (instance.data.state) {
-            instance.data.state.set('rightSidebar', null);
+        if (instance.state) {
+            instance.state.set('rightSidebar', null);
         }
     }
 };
@@ -313,7 +320,7 @@ const initHangingProtocol = () => {
         const layoutManager = OHIF.viewerbase.layoutManager;
 
         // Instantiate StudyMetadataSource: necessary for Hanging Protocol to get study metadata
-        const studyMetadataSource = new OHIF.studylist.classes.OHIFStudyMetadataSource();
+        const studyMetadataSource = new OHIF.studies.classes.OHIFStudyMetadataSource();
 
         // Creates Protocol Engine object with required arguments
         const ProtocolEngine = new HP.ProtocolEngine(layoutManager, studyMetadataList, [], studyMetadataSource);
@@ -323,6 +330,7 @@ const initHangingProtocol = () => {
 
         Session.set('ViewerReady', true);
 
+        Session.set('activeViewport', 0);
     });
 };
 
@@ -346,6 +354,10 @@ Template.viewer.helpers({
         const ready = Session.get('TimepointsReady') && Session.get('MeasurementsReady');
         OHIF.log.info('dataSourcesReady? : ' + ready);
         return ready;
+    },
+
+    state() {
+        return Template.instance().state;
     }
 });
 
@@ -355,7 +367,7 @@ Template.viewer.events({
     },
 
     'CornerstoneToolsMeasurementModified .imageViewerViewport'(event, instance, eventData) {
-        OHIF.measurements.MeasurementHandlers.onModified(event, instance, eventData);
+        instance.measurementModifiedHandler(event, instance, eventData);
     },
 
     'CornerstoneToolsMeasurementRemoved .imageViewerViewport'(event, instance, eventData) {

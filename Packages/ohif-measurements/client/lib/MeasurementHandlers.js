@@ -10,8 +10,13 @@ class MeasurementHandlers {
         const measurementData = eventData.measurementData;
         const Collection = measurementApi.tools[eventData.toolType];
 
-        // Stop here if the tool data shall not be stored (e.g. temp tools)
+        // Stop here if the tool data shall not be persisted (e.g. temp tools)
         if (!Collection) {
+            return;
+        }
+
+        // Stop here if there's no measurement data or if it was cancelled
+        if (!measurementData || measurementData.cancelled) {
             return;
         }
 
@@ -20,29 +25,30 @@ class MeasurementHandlers {
         const imageId = enabledElement.image.imageId;
 
         // Get studyInstanceUid & patientId
-        const study = cornerstoneTools.metaData.get('study', imageId);
+        const study = cornerstone.metaData.get('study', imageId);
         const studyInstanceUid = study.studyInstanceUid;
         const patientId = study.patientId;
 
         // Get seriesInstanceUid
-        const series = cornerstoneTools.metaData.get('series', imageId);
+        const series = cornerstone.metaData.get('series', imageId);
         const seriesInstanceUid = series.seriesInstanceUid;
 
         // Get sopInstanceUid
-        const sopInstance = cornerstoneTools.metaData.get('instance', imageId);
+        const sopInstance = cornerstone.metaData.get('instance', imageId);
         const sopInstanceUid = sopInstance.sopInstanceUid;
         const frameIndex = sopInstance.frame || 0;
 
         OHIF.log.info('CornerstoneToolsMeasurementAdded');
 
+        const imagePath = [studyInstanceUid, seriesInstanceUid, sopInstanceUid, frameIndex].join('_');
         let measurement = $.extend({
             userId: Meteor.userId(),
-            patientId: patientId,
-            studyInstanceUid: studyInstanceUid,
-            seriesInstanceUid: seriesInstanceUid,
-            sopInstanceUid: sopInstanceUid,
-            frameIndex: frameIndex,
-            imageId: imageId // TODO: In the future we should consider removing this
+            patientId,
+            studyInstanceUid,
+            seriesInstanceUid,
+            sopInstanceUid,
+            frameIndex,
+            imagePath
         }, measurementData);
 
         // Get the related timepoint by the measurement number and use its location if defined
@@ -78,7 +84,7 @@ class MeasurementHandlers {
         const measurementData = eventData.measurementData;
         const Collection = measurementApi.tools[eventData.toolType];
 
-        // Stop here if the tool data shall not be stored (e.g. temp tools)
+        // Stop here if the tool data shall not be persisted (e.g. temp tools)
         if (!Collection) {
             return;
         }
@@ -86,6 +92,9 @@ class MeasurementHandlers {
         OHIF.log.info('CornerstoneToolsMeasurementModified');
 
         let measurement = Collection.findOne(measurementData._id);
+
+        // Stop here if the measurement is already deleted
+        if (!measurement) return;
 
         // Update the collection data with the cornerstone measurement data
         const ignoredKeys = ['location', 'description', 'response'];
@@ -104,7 +113,7 @@ class MeasurementHandlers {
         }
 
         // Clean the measurement according to the Schema
-        Collection._c2._simpleSchema.clean(measurement);
+        Collection._c2._simpleSchema.clean(_.clone(measurement));
 
         // Insert the new measurement into the collection
         Collection.update(measurementId, {
@@ -118,14 +127,23 @@ class MeasurementHandlers {
     static onRemoved(e, instance, eventData) {
         OHIF.log.info('CornerstoneToolsMeasurementRemoved');
         const measurementData = eventData.measurementData;
-        const measurementNumber = measurementData.measurementNumber;
         const { measurementApi, timepointApi } = instance.data;
-        const collection = measurementApi.tools[eventData.toolType];
+        const Collection = measurementApi.tools[eventData.toolType];
+
+        // Stop here if the tool data shall not be persisted (e.g. temp tools)
+        if (!Collection) {
+            return;
+        }
+
         const measurementTypeId = measurementApi.toolsGroupsMap[measurementData.toolType];
-        const measurement = collection.findOne(measurementData._id);
-        const timepointId = measurement.timepointId;
+        const measurement = Collection.findOne(measurementData._id);
+
+        // Stop here if the measurement is already gone or never existed
+        if (!measurement) return;
+
 
         // Remove all the measurements with the given type and number
+        const { measurementNumber, timepointId } = measurement;
         measurementApi.deleteMeasurements(measurementTypeId, {
             measurementNumber,
             timepointId

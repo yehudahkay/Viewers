@@ -12,20 +12,8 @@ measurementTools.forEach(tool => {
 const Timepoints = new Mongo.Collection('timepoints');
 Timepoints._debugName = 'Timepoints';
 
-Timepoints.find().observe({
-    remove() {
-        console.warn('REMOVED');
-    }
-});
-
-// Drop our collections for testing purposes
-Meteor.startup(() => {
-    if (Meteor.settings.dropCollections) {
-        Timepoints.remove({});
-        measurementTools.forEach(tool => {
-            MeasurementCollections[tool.id].remove({});
-        });
-    }
+Meteor.publish('timepoints', function() {
+    return Timepoints.find();
 });
 
 // TODO: Make storage use update instead of clearing the entire collection and

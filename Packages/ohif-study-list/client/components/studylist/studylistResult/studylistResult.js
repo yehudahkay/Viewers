@@ -7,6 +7,7 @@ import { moment } from 'meteor/momentjs:moment';
 import { OHIF } from 'meteor/ohif:core';
 
 Session.setDefault('showLoadingText', true);
+Session.setDefault('serverError', false);
 
 Template.studylistResult.helpers({
     /**
@@ -26,8 +27,8 @@ Template.studylistResult.helpers({
         }
 
         // Pagination parameters
-        const rowsPerPage = instance.rowsPerPage.get();
-        const currentPage = instance.currentPage.get();
+        const rowsPerPage = instance.paginationData.rowsPerPage.get();
+        const currentPage = instance.paginationData.currentPage.get();
         const offset = rowsPerPage * currentPage;
         const limit = offset + rowsPerPage;
 
@@ -40,7 +41,7 @@ Template.studylistResult.helpers({
         }
 
         // Update record count
-        instance.recordCount.set(studies.length);
+        instance.paginationData.recordCount.set(studies.length);
 
         // Limit studies
         return studies.slice(offset, limit);
@@ -132,16 +133,18 @@ function search() {
     // Show loading message
     Session.set('showLoadingText', true);
 
+    // Hiding error message
+    Session.set('serverError', false);
+
     // Create the filters to be used for the StudyList Search
     filter = {
         patientName: getFilter($('input#patientName').val()),
         patientId: getFilter($('input#patientId').val()),
         accessionNumber: getFilter($('input#accessionNumber').val()),
         studyDescription: getFilter($('input#studyDescription').val()),
-        studyDateFrom: studyDateFrom,
-        studyDateTo: studyDateTo,
-        modalitiesInStudy: $('input#modality').val() ? $('input#modality').val() : "",
-        patientAge: getFilter($('input#patientAge').val())
+        studyDateFrom,
+        studyDateTo,
+        modalitiesInStudy: $('input#modality').val() ? $('input#modality').val() : ''
     };
 
     // Make sure that modality has a reasonable value, since it is occasionally
@@ -153,15 +156,29 @@ function search() {
 
     Meteor.call('StudyListSearch', filter, (error, studies) => {
         OHIF.log.info('StudyListSearch');
+        // Hide loading text
+
+        Session.set('showLoadingText', false);
+
         if (error) {
-            OHIF.log.warn(error);
+            Session.set('serverError', true);
+
+            const errorType = error.error;
+
+            if (errorType === 'server-connection-error') {
+                OHIF.log.error('There was an error connecting to the DICOM server, please verify if it is up and running.');
+            } else if (errorType === 'server-internal-error') {
+                OHIF.log.error('There was an internal error with the DICOM server');
+            } else {
+                OHIF.log.error('For some reason we could not list the studies.')
+            }
+
+            OHIF.log.error(error.stack);
             return;
         }
 
-        // Hide loading text
-        Session.set('showLoadingText', false);
-
         if (!studies) {
+            OHIF.log.warn('No studies found');
             return;
         }
 
@@ -209,11 +226,12 @@ Template.studylistResult.onCreated(() => {
     }
 
     const rowsPerPage = getRowsPerPage();
-    instance.rowsPerPage = new ReactiveVar(parseInt(rowsPerPage, 10), setRowsPerPage);
-
-    // Set currentPage indexed 0
-    instance.currentPage = new ReactiveVar(0);
-    instance.recordCount = new ReactiveVar();
+    instance.paginationData = {
+        class: 'studylist-pagination',
+        currentPage: new ReactiveVar(0),
+        rowsPerPage: new ReactiveVar(parseInt(rowsPerPage, 10), setRowsPerPage),
+        recordCount: new ReactiveVar(0)
+    };
 
     // Set sortOption
     const sortOptionSession = Session.get('sortOption');
@@ -266,12 +284,18 @@ Template.studylistResult.onRendered(() => {
     });
 
     if (startDate && endDate) {
-      instance.datePicker.updateInputText();
-      $studyDate.trigger('change');
+        instance.datePicker.updateInputText();
     } else {
-      // Retrieve all studies
-      search();
+        // Retrieve all studies
+        search();
     }
+});
+
+Template.studylistResult.onDestroyed(() => {
+    const instance = Template.instance();
+
+    // Destroy the daterangepicker to prevent residual elements on DOM
+    instance.datePicker.remove();
 });
 
 function resetSortingColumns(instance, sortingColumn) {

@@ -7,19 +7,23 @@ Package.describe({
 Package.onUse(function(api) {
     api.versionsFrom('1.4');
 
-    api.use('ecmascript');
-    api.use('standard-app-packages');
-    api.use('http');
-    api.use('jquery');
-    api.use('stylus');
-    api.use('momentjs:moment');
-    api.use('validatejs');
-    api.use('u2622:persistent-session');
+    api.use(['ecmascript',
+        'standard-app-packages',
+        'http',
+        'jquery',
+        'stylus',
+        'momentjs:moment',
+        'validatejs',
+        'u2622:persistent-session'
+    ]);
 
-    // Our custom packages
-    api.use('ohif:design');
-    api.use('ohif:core');
-    api.use('ohif:log');
+    // OHIF dependencies
+    api.use([
+        'ohif:design',
+        'ohif:core',
+        'ohif:hotkeys',
+        'ohif:log'
+    ]);
 
     const assets = [
         'assets/icons.svg',
@@ -79,11 +83,6 @@ Package.onUse(function(api) {
 
     api.addAssets(assets, 'client');
 
-
-    // TODO: Use NPM depends for these
-    api.addFiles('client/compatibility/jquery.hotkeys.js', 'client', {
-        bare: true
-    });
     api.addFiles('client/compatibility/dialogPolyfill.js', 'client', {
         bare: true
     });
@@ -96,6 +95,8 @@ Package.onUse(function(api) {
     api.addFiles('client/components/basic/layout/layout.styl', 'client');
     api.addFiles('client/components/basic/loadingText/loadingText.html', 'client');
     api.addFiles('client/components/basic/loadingText/loadingText.styl', 'client');
+    api.addFiles('client/components/basic/errorText/errorText.html', 'client');
+    api.addFiles('client/components/basic/errorText/errorText.styl', 'client');
 
     api.addFiles('client/components/basic/removableBackdrop/removableBackdrop.html', 'client');
     api.addFiles('client/components/basic/removableBackdrop/removableBackdrop.styl', 'client');
@@ -145,6 +146,8 @@ Package.onUse(function(api) {
     api.addFiles('client/components/viewer/viewerMain/viewerMain.js', 'client');
     api.addFiles('client/components/viewer/viewerMain/viewerMain.styl', 'client');
 
+    api.addFiles('client/components/viewer/toolContextMenu/toolContextMenu.js', 'client');
+
     api.addFiles('client/components/viewer/imageControls/imageControls.html', 'client');
     api.addFiles('client/components/viewer/imageControls/imageControls.js', 'client');
     api.addFiles('client/components/viewer/imageControls/imageControls.styl', 'client');
@@ -160,6 +163,10 @@ Package.onUse(function(api) {
     api.addFiles('client/components/viewer/cineDialog/cineDialog.js', 'client');
     api.addFiles('client/components/viewer/cineDialog/cineDialog.styl', 'client');
 
+    api.addFiles('client/components/viewer/downloadDialog/downloadDialog.html', 'client');
+    api.addFiles('client/components/viewer/downloadDialog/downloadDialog.js', 'client');
+    api.addFiles('client/components/viewer/downloadDialog/downloadDialog.styl', 'client');
+
     api.addFiles('client/components/viewer/toolbarSectionButton/toolbarSectionButton.html', 'client');
     api.addFiles('client/components/viewer/toolbarSectionButton/toolbarSectionButton.js', 'client');
     api.addFiles('client/components/viewer/toolbarSectionButton/toolbarSectionButton.styl', 'client');
@@ -167,9 +174,6 @@ Package.onUse(function(api) {
     api.addFiles('client/components/viewer/toolbarSectionTools/toolbarSectionTools.html', 'client');
     api.addFiles('client/components/viewer/toolbarSectionTools/toolbarSectionTools.js', 'client');
     api.addFiles('client/components/viewer/toolbarSectionTools/toolbarSectionTools.styl', 'client');
-
-    api.addFiles('client/components/viewer/playClipButton/playClipButton.html', 'client');
-    api.addFiles('client/components/viewer/playClipButton/playClipButton.js', 'client');
 
     api.addFiles('client/components/viewer/confirmDeleteDialog/confirmDeleteDialog.html', 'client');
     api.addFiles('client/components/viewer/confirmDeleteDialog/confirmDeleteDialog.js', 'client');
@@ -179,8 +183,9 @@ Package.onUse(function(api) {
     api.addFiles('client/components/viewer/textMarkerDialogs/textMarkerDialogs.js', 'client');
     api.addFiles('client/components/viewer/textMarkerDialogs/textMarkerDialogs.styl', 'client');
 
-    api.addFiles('client/components/viewer/displaySetNavigation/displaySetNavigation.html', 'client');
-    api.addFiles('client/components/viewer/displaySetNavigation/displaySetNavigation.js', 'client');
+    api.addFiles('client/components/viewer/seriesQuickSwitch/seriesQuickSwitch.html', 'client');
+    api.addFiles('client/components/viewer/seriesQuickSwitch/seriesQuickSwitch.styl', 'client');
+    api.addFiles('client/components/viewer/seriesQuickSwitch/seriesQuickSwitch.js', 'client');
 
     api.addFiles('client/components/viewer/studySeriesQuickSwitch/studySeriesQuickSwitch.html', 'client');
     api.addFiles('client/components/viewer/studySeriesQuickSwitch/studySeriesQuickSwitch.styl', 'client');
@@ -195,8 +200,10 @@ Package.onUse(function(api) {
     api.addFiles('client/components/viewer/studyTimepointBrowser/studyTimepointBrowser.js', 'client');
 
     api.addFiles('client/components/viewer/studyTimepointBrowser/studyTimepointStudy.html', 'client');
-    api.addFiles('client/components/viewer/studyTimepointBrowser/studyTimepointStudy.styl', 'client');
     api.addFiles('client/components/viewer/studyTimepointBrowser/studyTimepointStudy.js', 'client');
+
+    api.addFiles('client/components/viewer/windowLevelPresets/form.html', 'client');
+    api.addFiles('client/components/viewer/windowLevelPresets/form.js', 'client');
 
     api.export('dialogPolyfill', 'client');
 

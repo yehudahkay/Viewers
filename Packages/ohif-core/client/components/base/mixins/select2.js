@@ -13,16 +13,38 @@ OHIF.mixins.select2 = new OHIF.Mixin({
     composition: {
         onCreated() {
             const instance = Template.instance();
+            const { component, data } = instance;
+
+            // Controls select2 initialization
+            instance.isInitialized = false;
 
             // Set the custom focus flag
-            instance.component.isCustomFocus = true;
+            component.isCustomFocus = true;
+
+            const valueMethod = component.value;
+            component.value = value => {
+                if (_.isUndefined(value) && !instance.isInitialized) {
+                    if (!_.isUndefined(instance.data.value)) return instance.data.value;
+                    if (!_.isUndefined(component.defaultValue)) return component.defaultValue;
+                    return;
+                }
+
+                return valueMethod(value);
+            };
+
+            // Utility function to get the dropdown jQuery element
+            instance.getDropdownContainerElement = () => {
+                const $select2 = component.$element.nextAll('.select2:first');
+                const containerId = $select2.find('.select2-selection').attr('aria-owns');
+                return $(`#${containerId}`).closest('.select2-container');
+            };
 
             // Check if this select will include a placeholder
-            const placeholder = instance.data.options && instance.data.options.placeholder;
+            const placeholder = data.options && data.options.placeholder;
             if (placeholder) {
                 instance.autorun(() => {
                     // Get the option items
-                    let items = instance.data.items;
+                    let items = data.items;
 
                     // Check if the items are reactive and get them if true
                     const isReactive = items instanceof ReactiveVar;
@@ -41,9 +63,9 @@ OHIF.mixins.select2 = new OHIF.Mixin({
 
                         // Set the new items list including the empty option
                         if (isReactive) {
-                            instance.data.items.set(newItems);
+                            data.items.set(newItems);
                         } else {
-                            instance.data.items = newItems;
+                            data.items = newItems;
                         }
                     }
                 });
@@ -52,63 +74,121 @@ OHIF.mixins.select2 = new OHIF.Mixin({
 
         onRendered() {
             const instance = Template.instance();
-            const component = instance.component;
+            const { component, data } = instance;
 
             // Destroy and re-create the select2 instance
-            const rebuildSelect2 = () => {
+            instance.rebuildSelect2 = () => {
                 // Destroy the select2 instance if exists and re-create it
                 if (component.select2Instance) {
                     component.select2Instance.destroy();
                 }
 
+                // Clone the options and check if the select2 should be initialized inside a modal
+                const options = _.clone(data.options);
+                const $closestModal = component.$element.closest('.modal');
+                if ($closestModal.length) {
+                    options.dropdownParent = $closestModal;
+                }
+
                 // Apply the select2 to the component
-                component.$element.select2(instance.data.options);
+                component.$element.select2(options);
 
                 // Store the select2 instance to allow its further destruction
                 component.select2Instance = component.$element.data('select2');
 
                 // Get the focusable elements
                 const elements = [];
+                const $select2 = component.$element.nextAll('.select2:first');
                 elements.push(component.$element[0]);
-                elements.push(component.$element.nextAll('.select2:first').find('.select2-selection')[0]);
+                elements.push($select2.find('.select2-selection')[0]);
 
                 // Attach focus and blur handlers to focusable elements
                 $(elements).on('focus', event => {
+                    instance.isFocused = true;
                     if (event.target === event.currentTarget) {
                         // Show the state message on elements focus
                         component.toggleMessage(true);
                     }
                 }).on('blur', event => {
+                    instance.isFocused = false;
                     if (event.target === event.currentTarget) {
                         // Hide the state message on elements blur
                         component.toggleMessage(false);
                     }
                 });
+
+                // Redirect keydown events from input to the select2 selection handler
+                component.$element.on('keydown ', event => {
+                    event.preventDefault();
+                    $select2.find('.select2-selection').trigger(event);
+                });
+
+                // Keep focus on element if ESC was pressed
+                $select2.on('keydown ', event => {
+                    if (event.which === 27) {
+                        instance.component.$element.focus();
+                    }
+                });
+
+                // Set select2 as initialized
+                instance.isInitialized = true;
             };
 
             instance.autorun(() => {
                 // Run this computation every time the reactive items suffer any changes
-                const isReactive = instance.data.items instanceof ReactiveVar;
+                const isReactive = data.items instanceof ReactiveVar;
                 if (isReactive) {
-                    instance.data.items.dep.depend();
+                    data.items.dep.depend();
                 }
 
                 if (isReactive) {
                     // Keep the current value of the component
                     const currentValue = component.value();
+                    const wasFocused = instance.isFocused;
+
                     Tracker.afterFlush(() => {
-                        rebuildSelect2();
                         component.$element.val(currentValue);
+                        instance.rebuildSelect2();
+
+                        if (wasFocused) {
+                            component.$element.focus();
+                        }
                     });
                 } else {
-                    rebuildSelect2();
+                    instance.rebuildSelect2();
                 }
             });
         },
 
+        events: {
+            // Focus element when selecting a value
+            'select2:select'(event, instance) {
+                instance.component.$element.focus();
+            },
+
+            // Focus the element when closing the dropdown container using ESC key
+            'select2:open'(event, instance) {
+                const { minimumResultsForSearch } = instance.data.options;
+                if (minimumResultsForSearch === Infinity || minimumResultsForSearch === -1) return;
+                const $container = instance.getDropdownContainerElement();
+
+                if (!instance.data.wrapText) {
+                    $container.addClass('select2-container-nowrap');
+                }
+
+                const $searchInput = $container.find('.select2-search__field');
+                $searchInput.on('keydown.focusOnEsc', event => {
+                    if (event.which === 27) {
+                        $searchInput.off('keydown.focusOnEsc');
+                        instance.component.$element.focus();
+                    }
+                });
+            }
+        },
+
         onDestroyed() {
             const instance = Template.instance();
-            const component = instance.component;
+            const { component } = instance;
 
             // Destroy the select2 instance to remove unwanted DOM elements
             if (component.select2Instance) {

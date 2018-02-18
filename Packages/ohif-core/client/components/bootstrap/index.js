@@ -31,3 +31,7 @@ import './input/radio.html';
 import './input/range.html';
 import './input/select.html';
 import './input/text.html';
+
+import './notification';
+
+import './popover/form.html';

@@ -1,4 +1,4 @@
-@import "{ohif:design}/app.styl"
+@import "{ohif:design}/app"
 
 html body
   theme('background-color', '$primaryBackgroundColor')
@@ -53,6 +53,23 @@ label.form-group
   span.select2-selection__arrow
     height: 20px
     width: 12px
+
+    &:after
+      font-size: 12px
+      height: 20px
+      line-height: 20px
+      width: 12px
+
+.select2-container-nowrap
+
+  .select2-dropdown
+    display: table
+
+    .select2-results__options li
+      white-space: nowrap
+
+body .select2-container--default .select2-results>.select2-results__options
+  max-height: 320px
 
 .center-table
   display: table
@@ -143,3 +160,19 @@ label.form-group
     font-size: $screenBaseSize
   }
 }
+.full-width
+  width: 100%
+
+.full-height
+  height: 100%
+
+.flex-h
+  display: flex
+  flex-direction: row
+
+.flex-v
+  display: flex
+  flex-direction: column
+
+.flex-grow
+  flex-grow: 1

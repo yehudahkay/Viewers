@@ -5,7 +5,7 @@ import { OHIF } from 'meteor/ohif:core';
 
 import { schema as TimepointSchema } from 'meteor/ohif:measurements/both/schema/timepoints';
 
-let configuration = {};
+const configuration = {};
 
 class TimepointApi {
     static setConfiguration(config) {
@@ -16,11 +16,12 @@ class TimepointApi {
         return configuration;
     }
 
-    constructor(currentTimepointId, configuration) {
+    constructor(currentTimepointId, options={}) {
         if (currentTimepointId) {
             this.currentTimepointId = currentTimepointId;
         }
 
+        this.options = options;
         this.timepoints = new Mongo.Collection(null);
         this.timepoints.attachSchema(TimepointSchema);
         this.timepoints._debugName = 'Timepoints';
@@ -29,19 +30,30 @@ class TimepointApi {
     retrieveTimepoints(filter) {
         const retrievalFn = configuration.dataExchange.retrieve;
         if (!_.isFunction(retrievalFn)) {
+            OHIF.log.error('Timepoint retrieval function has not been configured.');
             return;
         }
 
         return new Promise((resolve, reject) => {
             retrievalFn(filter).then(timepointData => {
                 OHIF.log.info('Timepoint data retrieval');
-                OHIF.log.info(timepointData);
+
                 _.each(timepointData, timepoint => {
                     delete timepoint._id;
-                    this.timepoints.insert(timepoint);
+                    const query = {
+                        timepointId: timepoint.timepointId
+                    };
+
+                    this.timepoints.update(query, {
+                        $set: timepoint
+                    }, {
+                        upsert: true
+                    });
                 });
 
                 resolve();
+            }).catch(reason => {
+                OHIF.log.error(`Timepoint retrieval function failed: ${reason}`);
             });
         });
     }
@@ -109,8 +121,8 @@ class TimepointApi {
     }
 
     // Return all timepoints
-    all() {
-        return this.timepoints.find({}, {
+    all(filter={}) {
+        return this.timepoints.find(filter, {
             sort: {
                 latestDate: -1
             },
@@ -119,9 +131,7 @@ class TimepointApi {
 
     // Return only the current timepoint
     current() {
-        return this.timepoints.findOne({
-            timepointId: this.currentTimepointId
-        });
+        return this.timepoints.findOne({ timepointId: this.currentTimepointId });
     }
 
     lock() {
@@ -146,17 +156,13 @@ class TimepointApi {
 
         const latestDate = current.latestDate;
         return this.timepoints.findOne({
-            latestDate: {
-                $lt: latestDate
-            }
+            latestDate: { $lt: latestDate }
         }, {
-            sort: {
-                latestDate: -1
-            },
+            sort: { latestDate: -1 }
         });
     }
 
-    // Return only the current and prior Timepoints
+    // Return only the current and prior timepoints
     currentAndPrior() {
         const timepoints = [];
 
@@ -173,46 +179,53 @@ class TimepointApi {
         return timepoints;
     }
 
+    // Return only the comparison timepoints
+    comparison() {
+        return this.currentAndPrior();
+    }
+
     // Return only the baseline timepoint
     baseline() {
-        return this.timepoints.findOne({
-            timepointType: 'baseline'
-        });
+        return this.timepoints.findOne({ timepointType: 'baseline' });
+    }
+
+    // Return only the nadir timepoint
+    nadir() {
+        const timepoint = this.timepoints.findOne({ timepointKey: 'nadir' });
+        return timepoint || this.baseline();
     }
 
     // Return only the key timepoints (current, prior, nadir and baseline)
-    key() {
-        // Create a new Mini Mongo Collection to store the result
-        const result = new Mongo.Collection(null);
+    key(filter={}) {
+        const result = [];
 
         // Get all the timepoints
-        const all = this.all();
+        const all = this.all(filter);
 
         // Iterate over each timepoint and insert the key ones in the result
         _.each(all, (timepoint, index) => {
             if (index < 2 || index === (all.length - 1)) {
-                result.insert(timepoint);
+                result.push(timepoint);
             }
         });
 
         // Return the resulting timepoints
-        return result.find().fetch();
+        return result;
     }
 
     // Return only the timepoints for the given study
     study(studyInstanceUid) {
-        // Create a new Mini Mongo Collection to store the result
-        const result = new Mongo.Collection(null);
+        const result = [];
 
         // Iterate over each timepoint and insert the key ones in the result
         _.each(this.all(), (timepoint, index) => {
             if (_.contains(timepoint.studyInstanceUids, studyInstanceUid)) {
-                result.insert(timepoint);
+                result.push(timepoint);
             }
         });
 
         // Return the resulting timepoints
-        return result.find().fetch();
+        return result;
     }
 
     // Return the timepoint's name

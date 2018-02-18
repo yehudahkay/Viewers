@@ -13,22 +13,42 @@ OHIF.user.getData = key => {
     // Check if there is an user logged in
     OHIF.user.validate();
 
+    // Get the user object
+    const user = Meteor.user();
+
     // Get user profile data
-    const profile = Meteor.user().profile;
+    const profile = user && user.profile;
 
     // Get the user persistent data
     const data = profile && profile.persistent;
 
-    if (data) {
-        return data[key];
-    }
+    let result = data;
+    const keys = key.split('.');
+    keys.forEach(key => {
+        if (typeof result !== 'object' || !result) return;
+        result = result[key];
+    });
+
+    return result;
 };
 
 // Store the persistent data by giving a key and a value to store
 OHIF.user.setData = (key, value) => {
-    // Check if there is an user logged in
-    OHIF.user.validate();
+    return new Promise((resolve, reject) => {
+        try {
+            // Check if there is an user logged in
+            OHIF.user.validate();
+        } catch(error) {
+            reject(error);
+        }
 
-    // Call the update method on server-side
-    Meteor.call('ohif.user.data.set', key, value);
+        // Call the update method on server-side
+        Meteor.call('ohif.user.data.set', key, value, error => {
+            if (error) {
+                reject(error);
+            }
+
+            resolve();
+        });
+    });
 };

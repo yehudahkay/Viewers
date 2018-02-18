@@ -5,6 +5,7 @@ import { _ } from 'meteor/underscore';
 import { OHIF } from 'meteor/ohif:core';
 import { OHIFError } from './OHIFError';
 import { StackManager } from '../StackManager.js';
+import { getImageId } from '../getImageId.js';
 
 export class StudyPrefetcher {
 
@@ -13,12 +14,12 @@ export class StudyPrefetcher {
         this.prefetchDisplaySetsTimeout = 300;
         this.lastActiveViewportElement = null;
 
-        $(cornerstone).on('CornerstoneImageCacheFull.StudyPrefetcher', _.bind(this.cacheFullHandler, this));
+        $(cornerstone.events).on('CornerstoneImageCacheFull.StudyPrefetcher', _.bind(this.cacheFullHandler, this));
     }
 
     destroy() {
         this.stopPrefetching();
-        $(cornerstone).off('CornerstoneImageCacheFull.StudyPrefetcher');
+        $(cornerstone.events).off('CornerstoneImageCacheFull.StudyPrefetcher');
     }
 
     static getInstance() {
@@ -161,18 +162,20 @@ export class StudyPrefetcher {
     }
 
     getStudy(image) {
-        const studyMetadata = cornerstoneTools.metaData.get('study', image.imageId);
-        return _.find(this.studies, study => study.studyInstanceUid === studyMetadata.studyInstanceUid);
+        const studyMetadata = cornerstone.metaData.get('study', image.imageId);
+        return OHIF.viewer.Studies.find(study => study.studyInstanceUid === studyMetadata.studyInstanceUid);
     }
 
     getSeries(study, image) {
-        const seriesMetadata = cornerstoneTools.metaData.get('series', image.imageId);
-        return _.find(study.seriesList, series => series.seriesInstanceUid === seriesMetadata.seriesInstanceUid);
+        const seriesMetadata = cornerstone.metaData.get('series', image.imageId);
+        const studyMetadata = OHIF.viewerbase.getStudyMetadata(study);
+
+        return studyMetadata.getSeriesByUID(seriesMetadata.seriesInstanceUid);
     }
 
     getInstance(series, image) {
-        const instanceMetadata = cornerstoneTools.metaData.get('instance', image.imageId);
-        return _.find(series.instances, instance => instance.sopInstanceUid === instanceMetadata.sopInstanceUid);
+        const instanceMetadata = cornerstone.metaData.get('instance', image.imageId);
+        return series.getInstanceByUID(instanceMetadata.sopInstanceUid);
     }
 
     getActiveDisplaySet(displaySets, instance) {

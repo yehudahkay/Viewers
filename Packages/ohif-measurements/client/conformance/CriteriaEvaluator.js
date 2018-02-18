@@ -24,11 +24,15 @@ export class CriteriaEvaluator {
         });
     }
 
-    getMaxTargets() {
-        let result;
+    getMaxTargets(newTarget=false) {
+        let result = 0;
         _.each(this.criteria, criterion => {
-            if (criterion instanceof Criteria.MaxTargetsCriterion) {
-                result = criterion.options.limit;
+            const newTargetMatch = newTarget === !!criterion.options.newTarget;
+            if (criterion instanceof Criteria.MaxTargetsCriterion && newTargetMatch) {
+                const { limit } = criterion.options;
+                if (limit > result) {
+                    result = limit;
+                }
             }
         });
         return result;
@@ -77,6 +81,10 @@ export class CriteriaEvaluator {
             }
         });
         return nonconformities;
+    }
+
+    static setCriterion(criterionKey, criterionDefinitions) {
+        Criteria[criterionKey] = criterionDefinitions;
     }
 
 }

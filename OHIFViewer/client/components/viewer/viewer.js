@@ -25,7 +25,7 @@ const initHangingProtocol = () => {
         const layoutManager = OHIF.viewerbase.layoutManager;
 
         // Instantiate StudyMetadataSource: necessary for Hanging Protocol to get study metadata
-        const studyMetadataSource = new OHIF.studylist.classes.OHIFStudyMetadataSource();
+        const studyMetadataSource = new OHIF.studies.classes.OHIFStudyMetadataSource();
 
         // Get prior studies map
         const studyPriorsMap = OHIF.studylist.functions.getStudyPriorsMap(studyMetadataList);
@@ -38,6 +38,7 @@ const initHangingProtocol = () => {
 
         Session.set('ViewerReady', true);
 
+        Session.set('activeViewport', 0);
     });
 };
 
@@ -72,7 +73,7 @@ Meteor.startup(() => {
 
     // Metadata configuration
     const metadataProvider = OHIF.viewer.metadataProvider;
-    cornerstoneTools.metaData.addProvider(metadataProvider.provider.bind(metadataProvider));
+    cornerstone.metaData.addProvider(metadataProvider.provider.bind(metadataProvider));
 });
 
 Template.viewer.onCreated(() => {
@@ -83,9 +84,9 @@ Template.viewer.onCreated(() => {
     // Define the OHIF.viewer.data global object
     OHIF.viewer.data = OHIF.viewer.data || Session.get('ViewerData') || {};
 
-    instance.data.state = new ReactiveDict();
-    instance.data.state.set('leftSidebar', Session.get('leftSidebar'));
-    instance.data.state.set('rightSidebar', Session.get('rightSidebar'));
+    instance.state = new ReactiveDict();
+    instance.state.set('leftSidebar', Session.get('leftSidebar'));
+    instance.state.set('rightSidebar', Session.get('rightSidebar'));
 
     if (OHIF.viewer.data && OHIF.viewer.data.loadedSeriesData) {
         OHIF.log.info('Reloading previous loadedSeriesData');
@@ -119,7 +120,7 @@ Template.viewer.onCreated(() => {
         const studyMetadata = new OHIF.metadata.StudyMetadata(study, study.studyInstanceUid);
         let displaySets = study.displaySets;
 
-        if(!displaySets) {
+        if(!study.displaySets) {
             displaySets = OHIF.viewerbase.sortingManager.getDisplaySets(studyMetadata);
             study.displaySets = displaySets;
         }
@@ -152,13 +153,19 @@ Template.viewer.onRendered(function() {
 Template.viewer.events({
     'click .js-toggle-studies'() {
         const instance = Template.instance();
-        const current = instance.data.state.get('leftSidebar');
-        instance.data.state.set('leftSidebar', !current);
+        const current = instance.state.get('leftSidebar');
+        instance.state.set('leftSidebar', !current);
     },
 
     'click .js-toggle-protocol-editor'() {
         const instance = Template.instance();
-        const current = instance.data.state.get('rightSidebar');
+        const current = instance.state.get('rightSidebar');
         instance.data.state.set('rightSidebar', !current);
     },
+});
+
+Template.viewer.helpers({
+    state() {
+        return Template.instance().state;
+    }
 });

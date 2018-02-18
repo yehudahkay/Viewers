@@ -204,17 +204,39 @@ class MeasurementApi {
                 OHIF.log.info('Measurement data retrieval');
                 OHIF.log.info(measurementData);
 
+                const toolsGroupsMap = MeasurementApi.getToolsGroupsMap();
+                const measurementsGroups = {};
+
                 Object.keys(measurementData).forEach(measurementTypeId => {
                     const measurements = measurementData[measurementTypeId];
 
                     measurements.forEach(measurement => {
-                        delete measurement._id;
-                        // @TODO: check if this conditional is ok, because is throwing
-                        // an error for temp measurements -> measurement.toolType is undefined
-                        if (measurement.toolType && this.tools[measurement.toolType]) {
-                            this.tools[measurement.toolType].insert(measurement);
+                        const { toolType } = measurement;
+                        if (toolType && this.tools[toolType]) {
+                            delete measurement._id;
+                            const toolGroup = toolsGroupsMap[toolType];
+                            if (!measurementsGroups[toolGroup]) {
+                                measurementsGroups[toolGroup] = [];
+                            }
+
+                            measurementsGroups[toolGroup].push(measurement);
                         }
                     });
+                });
+
+                Object.keys(measurementsGroups).forEach(groupKey => {
+                    const group = measurementsGroups[groupKey];
+                    group.sort((a, b) => {
+                        if (a.measurementNumber > b.measurementNumber) {
+                            return 1;
+                        } else if (a.measurementNumber < b.measurementNumber) {
+                            return -1;
+                        }
+
+                        return 0;
+                    });
+
+                    group.forEach(m => this.tools[m.toolType].insert(m));
                 });
 
                 resolve();
@@ -293,6 +315,9 @@ class MeasurementApi {
     deleteMeasurements(measurementTypeId, filter) {
         const groupCollection = this.toolGroups[measurementTypeId];
 
+        // Stop here if it is a temporary toolGroups
+        if (!groupCollection) return;
+
         // Get the entries information before removing them
         const groupItems = groupCollection.find(filter).fetch();
         const entries = [];
@@ -315,10 +340,12 @@ class MeasurementApi {
         const measurementNumber = filter.measurementNumber || entries[0].measurementNumber;
 
         // Synchronize the new data with cornerstone tools
-        const toolState = cornerstoneTools.globalImageIdSpecificToolStateManager.toolState;
+        const toolState = cornerstoneTools.globalImageIdSpecificToolStateManager.saveToolState();
+
         _.each(entries, entry => {
-            if (toolState[entry.imageId]) {
-                const toolData = toolState[entry.imageId][entry.toolType];
+            const imageId = OHIF.viewerbase.getImageIdForImagePath(entry.imagePath);
+            if (toolState[imageId]) {
+                const toolData = toolState[imageId][entry.toolType];
                 const measurementsData = toolData && toolData.data;
                 const measurementEntry = _.findWhere(measurementsData, {
                     _id: entry._id
@@ -330,6 +357,8 @@ class MeasurementApi {
                 }
             }
         });
+
+        cornerstoneTools.globalImageIdSpecificToolStateManager.restoreToolState(toolState);
 
         // Synchronize the updated measurements with Cornerstone Tools
         // toolData to make sure the displayed measurements show 'Target X' correctly

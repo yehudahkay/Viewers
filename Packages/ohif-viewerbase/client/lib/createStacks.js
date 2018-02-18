@@ -1,5 +1,7 @@
+import { Meteor } from 'meteor/meteor';
 import { ImageSet } from './classes/ImageSet';
 import { isImage } from './isImage';
+import { OHIF } from 'meteor/ohif:core';
 
 const isMultiFrame = instance => {
     // NumberOfFrames (0028,0008)
@@ -15,6 +17,8 @@ const makeDisplaySet = (series, instances) => {
     // set appropriate attributes to image set...
     imageSet.setAttributes({
         displaySetInstanceUid: imageSet.uid, // create a local alias for the imageSet UID
+        seriesDate: seriesData.seriesDate,
+        seriesTime: seriesData.seriesTime,
         seriesInstanceUid: series.getSeriesInstanceUID(),
         seriesNumber: instance.getRawValue('x00200011'),
         seriesDescription: instance.getRawValue('x0008103e'),
@@ -24,11 +28,14 @@ const makeDisplaySet = (series, instances) => {
         isMultiFrame: isMultiFrame(instance)
     });
 
-    // Sort the images in this series
-    imageSet.sortBy((a, b) => {
-        // Sort by InstanceNumber (0020,0013)
-        return (parseInt(a.getRawValue('x00200013', 0)) || 0) - (parseInt(b.getRawValue('x00200013', 0)) || 0);
-    });
+    // Sort the images in this series if needed
+    const shallSort = !OHIF.utils.ObjectPath.get(Meteor, 'settings.public.ui.sortSeriesByIncomingOrder');
+    if (shallSort) {
+        imageSet.sortBy((a, b) => {
+            // Sort by InstanceNumber (0020,0013)
+            return (parseInt(a.getRawValue('x00200013', 0)) || 0) - (parseInt(b.getRawValue('x00200013', 0)) || 0);
+        });
+    }
 
     // Include the first image instance number (after sorted)
     imageSet.setAttribute('instanceNumber', imageSet.getImage(0).getRawValue('x00200013'));

@@ -1,3 +1,4 @@
+import * as cornerstoneMath from 'cornerstone-math';
 import { parsingUtils } from '../parsingUtils';
 
 const FUNCTION = 'function';
@@ -58,6 +59,8 @@ export class MetadataProvider {
         metadata.series = {
             seriesDescription: seriesMetadata.seriesDescription,
             seriesNumber: seriesMetadata.seriesNumber,
+            seriesDate: seriesMetadata.seriesDate,
+            seriesTime: seriesMetadata.seriesTime,
             modality: seriesMetadata.modality,
             seriesInstanceUid: seriesMetadata.seriesInstanceUid,
             numImages: numImages
@@ -69,7 +72,8 @@ export class MetadataProvider {
             name: studyMetadata.patientName,
             id: studyMetadata.patientId,
             birthDate: studyMetadata.patientBirthDate,
-            sex: studyMetadata.patientSex
+            sex: studyMetadata.patientSex,
+            age: studyMetadata.patientAge
         };
 
         // If there is sufficient information, populate
@@ -185,6 +189,8 @@ export class MetadataProvider {
             return;
         }
 
+        imageMetadata.patient.age = imageMetadata.patient.age || this.getFromDataSet(image.data, 'string', 'x00101010');
+
         imageMetadata.instance.rows = imageMetadata.instance.rows || image.rows;
         imageMetadata.instance.columns = imageMetadata.instance.columns || image.columns;
 
@@ -240,22 +246,17 @@ export class MetadataProvider {
         }
 
         return {
-            frameOfReferenceUID:
-                instance.frameOfReferenceUID,
-            rows:
-                instance.rows,
-            columns:
-                instance.columns,
+            frameOfReferenceUID: instance.frameOfReferenceUID,
+            rows: instance.rows,
+            columns: instance.columns,
             rowCosines:
                 new cornerstoneMath.Vector3(parseFloat(imageOrientation[0]), parseFloat(imageOrientation[1]), parseFloat(imageOrientation[2])),
             columnCosines:
                 new cornerstoneMath.Vector3(parseFloat(imageOrientation[3]), parseFloat(imageOrientation[4]), parseFloat(imageOrientation[5])),
             imagePositionPatient:
                 new cornerstoneMath.Vector3(parseFloat(imagePosition[0]), parseFloat(imagePosition[1]), parseFloat(imagePosition[2])),
-            rowPixelSpacing:
-                rowPixelSpacing,
-            columnPixelSpacing:
-                columnPixelSpacing,
+            rowPixelSpacing,
+            columnPixelSpacing,
         };
     }
 
@@ -313,7 +314,7 @@ export class MetadataProvider {
     }
 
     /**
-     * Get a bound reference to the privider function.
+     * Get a bound reference to the provider function.
      */
     getProvider() {
         let provider = this._provider;
