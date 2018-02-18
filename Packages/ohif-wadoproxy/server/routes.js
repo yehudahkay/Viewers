@@ -166,7 +166,9 @@ Router.route(Settings.uri.replace(OHIF.utils.absoluteUrl(), ''), function() {
 
     // Stream the original request information into the request
     // to the PACS
-    request.pipe(proxyRequest);
+    request.pipe(proxyRequest, {
+        end: true
+    });
 }, {
     where: 'server'
 });

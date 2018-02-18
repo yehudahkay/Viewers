@@ -19,6 +19,7 @@ var getInstanceRetrievalParams = function(studyInstanceUID, seriesInstanceUID) {
         0x00080005: '', // specificCharacterSet
         0x00080020: '', // studyDate
         0x00080030: '', // studyDescription
+        0x00080050: '', // accessionNumber
         0x00080090: '', // referringPhysicianName
         0x00100010: '', // patientName
         0x00100020: '', // patientId

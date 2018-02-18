@@ -42,7 +42,7 @@ HP.setEngine = protocolEngine => {
 
 Meteor.startup(() => {
     HP.addCustomViewportSetting('wlPreset', 'Window/Level Preset', Object.create(null), (element, optionValue) => {
-        if (optionValue in OHIF.viewer.wlPresets) {
+        if (_.findWhere(OHIF.viewer.wlPresets, { id: optionValue })) {
             OHIF.viewerbase.wlPresets.applyWLPreset(optionValue, element);
         }
     });
@@ -113,7 +113,7 @@ HP.ProtocolEngine = class ProtocolEngine {
      * with the given study. The best protocol are orded by score and returned in an array
      * @param  {Object} study StudyMetadata instance object
      * @return {Array}       Array of match objects or an empty array if no match was found
-     *                       Each match object has the score of the matching and the matched 
+     *                       Each match object has the score of the matching and the matched
      *                       protocol
      */
     findMatchByStudy(study) {
@@ -122,7 +122,7 @@ HP.ProtocolEngine = class ProtocolEngine {
         const matched = [];
         const studyInstance = study.getFirstInstance();
 
-        // Set custom attribute for study metadata 
+        // Set custom attribute for study metadata
         const numberOfAvailablePriors = this.getNumberOfAvailablePriors(study.getObjectID());
 
         HP.ProtocolStore.getProtocol().forEach(protocol => {
@@ -749,7 +749,7 @@ HP.ProtocolEngine = class ProtocolEngine {
      */
     previousProtocolStage() {
         OHIF.log.info('ProtocolEngine::previousProtocolStage');
-        
+
         if (!this.setCurrentProtocolStage(-1)) {
             // Just for logging purpose
             OHIF.log.info('ProtocolEngine::previousProtocolStage failed');
