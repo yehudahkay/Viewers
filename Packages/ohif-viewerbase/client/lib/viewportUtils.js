@@ -1,12 +1,12 @@
-import { Session } from 'meteor/session';
-import { Random } from 'meteor/random';
-import { $ } from 'meteor/jquery';
-import { _ } from 'meteor/underscore';
+import {Session} from 'meteor/session';
+import {Random} from 'meteor/random';
+import {$} from 'meteor/jquery';
+import {_} from 'meteor/underscore';
 // Local Modules
-import { OHIF } from 'meteor/ohif:core';
-import { cornerstone, cornerstoneTools } from 'meteor/ohif:cornerstone';
-import { updateOrientationMarkers } from './updateOrientationMarkers';
-import { getInstanceClassDefaultViewport } from './instanceClassSpecificViewport';
+import {OHIF} from 'meteor/ohif:core';
+import {cornerstone, cornerstoneTools} from 'meteor/ohif:cornerstone';
+import {updateOrientationMarkers} from './updateOrientationMarkers';
+import {getInstanceClassDefaultViewport} from './instanceClassSpecificViewport';
 
 /**
  * Get a cornerstone enabledElement for a DOM Element
@@ -19,7 +19,7 @@ const getEnabledElement = element => {
 
     try {
         enabledElement = cornerstone.getEnabledElement(element);
-    } catch(error) {
+    } catch (error) {
         OHIF.log.warn(error);
     }
 
@@ -149,7 +149,7 @@ const resetViewportWithElement = element => {
     }
 };
 
-const resetViewport = (viewportIndex=null) => {
+const resetViewport = (viewportIndex = null) => {
     if (viewportIndex === null) {
         resetViewportWithElement(getActiveViewportElement());
     } else if (viewportIndex === 'all') {
@@ -228,12 +228,18 @@ const toggleCineDialog = () => {
 };
 
 const toggleDownloadDialog = () => {
-    stopActiveClip();
-    const $dialog = $('#imageDownloadDialog');
-    if ($dialog.length) {
-        $dialog.find('.close:first').click();
-    } else {
-        OHIF.ui.showDialog('imageDownloadDialog');
+    //subvert download button
+    if (window.parent.ohifDownload) {
+        window.parent.ohifDownload(OHIF.viewer.data.loadedSeriesData[0].seriesInstanceUid);
+    }
+    else {
+        stopActiveClip();
+        const $dialog = $('#imageDownloadDialog');
+        if ($dialog.length) {
+            $dialog.find('.close:first').click();
+        } else {
+            OHIF.ui.showDialog('imageDownloadDialog');
+        }
     }
 };
 
@@ -395,4 +401,4 @@ const viewportUtils = {
     isStackScrollLinkingActive
 };
 
-export { viewportUtils };
+export {viewportUtils};
