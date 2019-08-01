@@ -1,3 +1,10 @@
+Please note, this repo creates the current ohif viewer on ref.management.
+It is a fork of the repo from 2018 which was fixed and changed for our needs.
+As of 2019 the documentation is still online for version 1.0 however they 
+have switched to react in version 2.0. There is also documentation within the repo.
+In order to build for ref.management use the command: 
+METEOR_PACKAGE_DIRS="../../Packages" meteor-build-client ../myOutputFolder -u localhost:3000
+
 # Viewers
 This repo contains the OHIF DICOM Viewer and Lesion Tracker, and various shared meteor packages.
 

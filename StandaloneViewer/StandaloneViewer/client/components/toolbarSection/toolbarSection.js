@@ -215,6 +215,13 @@ Template.toolbarSection.helpers({
         });
 
         buttonData.push({
+            id: 'toggleDownloadDicom',
+            title: 'Download DICOM',
+            classes: 'imageViewerCommand',
+            iconClasses: 'fa fa-camera',
+        });
+
+        buttonData.push({
             id: 'toggleMore',
             title: 'More',
             classes: 'rp-x-1 rm-l-3',

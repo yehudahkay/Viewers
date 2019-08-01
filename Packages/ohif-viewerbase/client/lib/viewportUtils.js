@@ -243,6 +243,10 @@ const toggleDownloadDialog = () => {
     }
 };
 
+const toggleDownloadDicom = () => {
+    window.parent.ohifDownload(OHIF.viewer.data.loadedSeriesData[0].seriesInstanceUid, 'dicom');
+};
+
 const isDownloadEnabled = () => {
     const activeViewport = getActiveViewportElement();
 
@@ -393,6 +397,7 @@ const viewportUtils = {
     toggleCinePlay,
     toggleCineDialog,
     toggleDownloadDialog,
+    toggleDownloadDicom,
     isPlaying,
     isDownloadEnabled,
     hasMultipleFrames,

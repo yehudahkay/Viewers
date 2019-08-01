@@ -225,6 +225,11 @@ Meteor.startup(function() {
             name: 'Show/Hide Download Dialog',
             action: viewportUtils.toggleDownloadDialog,
             disabled: () => !viewportUtils.isDownloadEnabled()
+        },
+        toggleDownloadDicom: {
+            name: 'Show/Hide Download Dialog',
+            action: viewportUtils.toggleDownloadDicom,
+            disabled: () => !viewportUtils.isDownloadEnabled()
         }
     }, true);
 
