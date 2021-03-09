@@ -160,22 +160,22 @@ Template.toolbarSection.helpers({
                 iconClasses: 'fa fa-toggle-down fa-fw'
             });
 
-            // const { isPlaying } = OHIF.viewerbase.viewportUtils;
-            // buttonData.push({
-            //     id: 'toggleCinePlay',
-            //     title: () => isPlaying() ? 'Stop' : 'Play',
-            //     classes: 'imageViewerCommand',
-            //     iconClasses: () => ('fa fa-fw ' + (isPlaying() ? 'fa-stop' : 'fa-play')),
-            //     active: isPlaying
-            // });
-            //
-            // buttonData.push({
-            //     id: 'toggleCineDialog',
-            //     title: 'CINE',
-            //     classes: 'imageViewerCommand',
-            //     iconClasses: 'fa fa-youtube-play',
-            //     active: () => $('#cineDialog').is(':visible')
-            // });
+            const { isPlaying } = OHIF.viewerbase.viewportUtils;
+            buttonData.push({
+                id: 'toggleCinePlay',
+                title: () => isPlaying() ? 'Stop' : 'Play',
+                classes: 'imageViewerCommand',
+                iconClasses: () => ('fa fa-fw ' + (isPlaying() ? 'fa-stop' : 'fa-play')),
+                active: isPlaying
+            });
+            
+            buttonData.push({
+                id: 'toggleCineDialog',
+                title: 'CINE',
+                classes: 'imageViewerCommand',
+                iconClasses: 'fa fa-youtube-play',
+                active: () => $('#cineDialog').is(':visible')
+            });
         }
 
         buttonData.push({
